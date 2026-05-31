@@ -1,4 +1,5 @@
 import os
+import random
 from fastapi import FastAPI, Depends, HTTPException, status, Header, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -290,6 +291,7 @@ def create_booking(
         assigned_partner_id = best_partner.user_id
         booking_status = "accepted"
 
+    otp_code = str(random.randint(100000, 999999))
     new_booking = Booking(
         customer_id=customer_id,
         partner_id=assigned_partner_id,
@@ -302,6 +304,7 @@ def create_booking(
         address=booking_data.address,
         payment_method=booking_data.payment_method,
         payment_status="completed" if booking_data.payment_method == "UPI" else "pending",
+        otp=otp_code,
         latitude=booking_data.latitude,
         longitude=booking_data.longitude
     )
@@ -315,7 +318,13 @@ def create_booking(
 def get_bookings(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if user.role == "partner":
-        return db.query(Booking).filter(Booking.partner_id == user_id).order_by(Booking.id.desc()).all()
+        bookings = db.query(Booking).filter(Booking.partner_id == user_id).order_by(Booking.id.desc()).all()
+        result = []
+        for b in bookings:
+            pydantic_b = schemas.BookingResponse.model_validate(b)
+            pydantic_b.otp = None
+            result.append(pydantic_b)
+        return result
     else:
         return db.query(Booking).filter(Booking.customer_id == user_id).order_by(Booking.id.desc()).all()
 
@@ -328,15 +337,23 @@ def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id
             detail="Only service partners can view incoming jobs"
         )
     # Return all pending bookings matching partner's service category
-    return db.query(Booking).filter(
+    bookings = db.query(Booking).filter(
         Booking.service_category == partner_profile.service_category,
         Booking.status == "pending"
     ).order_by(Booking.id.desc()).all()
+    
+    result = []
+    for b in bookings:
+        pydantic_b = schemas.BookingResponse.model_validate(b)
+        pydantic_b.otp = None
+        result.append(pydantic_b)
+    return result
 
 @app.put("/api/bookings/{booking_id}/status", response_model=schemas.BookingResponse)
 def update_booking_status(
     booking_id: int, 
     new_status: str, 
+    otp: Optional[str] = None,
     user_id: int = Depends(get_current_user_id), 
     db: Session = Depends(get_db)
 ):
@@ -352,7 +369,19 @@ def update_booking_status(
         booking.status = "accepted"
     # General status progressions by assigned partner
     elif user.role == "partner" and booking.partner_id == user_id:
-        if new_status in ["on_the_way", "in_progress"]:
+        if new_status == "on_the_way":
+            booking.status = new_status
+        elif new_status == "in_progress":
+            if not otp:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Verification OTP is required to start work."
+                )
+            if booking.otp and otp != booking.otp:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid verification OTP. Please ask the customer for the correct OTP."
+                )
             booking.status = new_status
         elif new_status == "completed":
             booking.status = "completed"
@@ -372,7 +401,11 @@ def update_booking_status(
 
     db.commit()
     db.refresh(booking)
-    return booking
+    
+    pydantic_booking = schemas.BookingResponse.model_validate(booking)
+    if user.role == "partner":
+        pydantic_booking.otp = None
+    return pydantic_booking
 
 # === Review Routes ===
 

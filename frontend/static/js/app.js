@@ -325,6 +325,31 @@ async function progressJob(bookingId, currentStatus) {
     }
 }
 
+async function verifyJobOtp(bookingId) {
+    const otpInput = document.getElementById(`otp-input-${bookingId}`);
+    const otp = otpInput ? otpInput.value.trim() : "";
+    
+    if (!otp) {
+        showToast("Please enter the verification OTP.", "danger");
+        return;
+    }
+    if (otp.length !== 6 || isNaN(otp)) {
+        showToast("Please enter a valid 6-digit OTP code.", "danger");
+        return;
+    }
+    
+    try {
+        await apiRequest(`/bookings/${bookingId}/status?new_status=in_progress&otp=${otp}`, {
+            method: "PUT"
+        });
+        showToast("OTP verified successfully! Status updated to WORKING.", "success");
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+        console.error("OTP verification error:", err);
+        showToast(err.message || "Invalid OTP. Please try again.", "danger");
+    }
+}
+
 // 5. Customer Booking Cancellation
 async function cancelBooking(bookingId) {
     if (!confirm("Are you sure you want to cancel this booking?")) return;

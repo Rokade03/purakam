@@ -94,7 +94,10 @@ def run_tests():
     booking_data = r.json()
     pune_booking_id = booking_data["id"]
     assigned_partner_name = booking_data["partner"]["name"]
-    print(f"Pune Booking created (ID: #SRV{pune_booking_id}). Assigned Partner: {assigned_partner_name}")
+    assert "otp" in booking_data, "OTP missing from booking creation response"
+    pune_booking_otp = booking_data["otp"]
+    assert len(pune_booking_otp) == 6, f"Expected 6-digit OTP, got {pune_booking_otp}"
+    print(f"Pune Booking created (ID: #SRV{pune_booking_id}) with OTP: {pune_booking_otp}. Assigned Partner: {assigned_partner_name}")
     assert assigned_partner_name == "Vijay Shinde", f"Expected Vijay Shinde (Pune), got {assigned_partner_name}"
 
     # 5b. Place booking explicitly requesting Rajesh Kumar (Bypassing Proximity Matchmaking)
@@ -201,9 +204,34 @@ def run_tests():
     assert r.status_code == 200, f"Failed to progress to 'on_the_way': {r.text}"
     print(f"Status updated: {r.json()['status']}")
 
+    # 9a. Try to progress to in_progress without OTP (should fail)
+    print("9a. Attempting to start work (in_progress) without OTP...")
     r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress", headers=vijay_headers)
-    assert r.status_code == 200, f"Failed to progress to 'in_progress': {r.text}"
+    assert r.status_code == 400, f"Expected status 400, got {r.status_code}"
+    print("Expected failure achieved: OTP is required.")
+
+    # 9b. Try to progress to in_progress with incorrect OTP (should fail)
+    print("9b. Attempting to start work (in_progress) with incorrect OTP...")
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress&otp=000000", headers=vijay_headers)
+    assert r.status_code == 400, f"Expected status 400, got {r.status_code}"
+    print("Expected failure achieved: Invalid OTP.")
+
+    # 9c. Progress to in_progress with correct OTP (should succeed)
+    print("9c. Attempting to start work (in_progress) with correct OTP...")
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress&otp={pune_booking_otp}", headers=vijay_headers)
+    assert r.status_code == 200, f"Failed to progress to 'in_progress' with correct OTP: {r.text}"
     print(f"Status updated: {r.json()['status']}")
+
+    # 9d. Verify that the partner cannot see the OTP in booking response list
+    print("9d. Verifying that partner cannot see OTP in bookings list...")
+    r = requests.get(f"{API_URL}/bookings", headers=vijay_headers)
+    assert r.status_code == 200
+    partner_bookings = r.json()
+    for b in partner_bookings:
+        if b["id"] == pune_booking_id:
+            assert b.get("otp") is None, f"Security vulnerability: Partner was able to see the OTP in bookings list! ({b.get('otp')})"
+            break
+    print("Security check passed: Partner cannot see the OTP in the bookings list.")
 
     r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=completed", headers=vijay_headers)
     assert r.status_code == 200, f"Failed to progress to 'completed': {r.text}"

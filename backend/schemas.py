@@ -103,6 +103,7 @@ class BookingResponse(BaseModel):
     payment_method: str
     payment_status: str
     attachment_path: Optional[str] = None
+    otp: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     created_at: datetime

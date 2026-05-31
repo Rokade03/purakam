@@ -109,9 +109,14 @@
                                             Start Travel <i data-lucide="milestone"></i>
                                         </button>
                                     {% elif b.status == 'on_the_way' %}
-                                        <button onclick="progressJob({{ b.id }}, 'on_the_way')" class="btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                                            Start Work <i data-lucide="hammer"></i>
-                                        </button>
+                                        <div style="display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end;">
+                                            <input type="text" id="otp-input-{{ b.id }}" placeholder="Enter customer OTP" 
+                                                   style="width: 140px; font-size: 0.8rem; padding: 0.4rem 0.6rem; text-align: center; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: rgba(0, 0, 0, 0.05); color: var(--text-primary); font-family: monospace;" 
+                                                   maxlength="6">
+                                            <button onclick="verifyJobOtp({{ b.id }})" class="btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; width: 140px; justify-content: center;">
+                                                Start Work <i data-lucide="hammer"></i>
+                                            </button>
+                                        </div>
                                     {% elif b.status == 'in_progress' %}
                                         <button onclick="progressJob({{ b.id }}, 'in_progress')" class="btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
                                             Mark Completed <i data-lucide="check-circle-2"></i>

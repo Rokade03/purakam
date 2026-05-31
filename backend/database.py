@@ -83,6 +83,7 @@ class Booking(Base):
     payment_method = Column(String, default="UPI")  # "UPI", "COD", "Card"
     payment_status = Column(String, default="pending")  # "pending", "completed"
     attachment_path = Column(String, nullable=True)     # Path to user uploaded photo/video
+    otp = Column(String, nullable=True)                 # OTP code for work start verification
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
