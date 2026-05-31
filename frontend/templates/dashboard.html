@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <h2>Welcome, {{ session.get('user_name') }}</h2>
+        <p style="color: var(--text-secondary);">Manage your bookings and rate service quality</p>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="dashboard-grid">
+        <div class="dashboard-stat-card scroll-reveal">
+            <div class="stat-icon"><i data-lucide="calendar"></i></div>
+            <div class="stat-data">
+                <h3>{{ bookings | length }}</h3>
+                <p>Total Bookings</p>
+            </div>
+        </div>
+        
+        <div class="dashboard-stat-card scroll-reveal">
+            <!-- Count completed -->
+            {% set completed_count = namespace(value=0) %}
+            {% for b in bookings %}
+                {% if b.status == 'completed' %}
+                    {% set completed_count.value = completed_count.value + 1 %}
+                {% endif %}
+            {% endfor %}
+            <div class="stat-icon success"><i data-lucide="check-circle"></i></div>
+            <div class="stat-data">
+                <h3>{{ completed_count.value }}</h3>
+                <p>Completed Services</p>
+            </div>
+        </div>
+
+        <div class="dashboard-stat-card scroll-reveal">
+            <!-- Count active -->
+            {% set active_count = namespace(value=0) %}
+            {% for b in bookings %}
+                {% if b.status in ['pending', 'accepted', 'on_the_way', 'in_progress'] %}
+                    {% set active_count.value = active_count.value + 1 %}
+                {% endif %}
+            {% endfor %}
+            <div class="stat-icon warning"><i data-lucide="loader"></i></div>
+            <div class="stat-data">
+                <h3>{{ active_count.value }}</h3>
+                <p>Active Requests</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking List -->
+    <h3 style="margin-bottom: 1.5rem;">Your Booking History</h3>
+    
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        {% for booking in bookings %}
+            <div class="booking-item-card fade-in scroll-reveal">
+                <!-- Header -->
+                <div class="booking-header">
+                    <span style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="tag" style="width: 16px; height: 16px; color: var(--primary);"></i>
+                        Booking ID: #SRV{{ booking.id }}
+                    </span>
+                    <span class="status-badge badge-{{ booking.status }}">
+                        {{ booking.status | replace('_', ' ') }}
+                    </span>
+                </div>
+                
+                <!-- Body -->
+                <div class="booking-body">
+                    <div class="booking-meta">
+                        <div class="booking-meta-row">
+                            <i data-lucide="home"></i>
+                            <strong>Service:</strong> {{ booking.service_category }}
+                        </div>
+                        <div class="booking-meta-row">
+                            <i data-lucide="calendar"></i>
+                            <strong>Date & Time:</strong> {{ booking.booking_date }} at {{ booking.time_slot }}
+                        </div>
+                        <div class="booking-meta-row">
+                            <i data-lucide="map-pin"></i>
+                            <strong>Address:</strong> {{ booking.address }}
+                        </div>
+                        {% if booking.attachment_path %}
+                            <div class="booking-meta-row" style="margin-top: 0.8rem;">
+                                <i data-lucide="paperclip"></i>
+                                <strong>Problem Attachment:</strong>
+                                <a href="{{ BACKEND_BASE_URL }}/uploads/{{ booking.attachment_path }}" target="_blank" style="text-decoration: underline; color: var(--text-primary); font-weight: 500;">
+                                    View Uploaded File
+                                </a>
+                            </div>
+                        {% endif %}
+                        
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-glass);">
+                            {% if booking.partner %}
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">
+                                            {{ booking.partner.name[0] }}
+                                        </div>
+                                        <div>
+                                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Assigned Service Provider</p>
+                                            <p style="margin: 0; font-weight: 600;">{{ booking.partner.name }} ({{ booking.partner.phone }})</p>
+                                        </div>
+                                    </div>
+                                    {% if booking.status not in ['completed', 'cancelled'] %}
+                                        <button class="chat-launcher-btn" onclick="openChatDrawer({{ booking.id }}, '{{ booking.partner.name }}')">
+                                            <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Chat
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--warning);">
+                                    <i data-lucide="loader" class="pulse" style="width: 18px;"></i>
+                                    <span style="font-size: 0.9rem; font-weight: 500;">Searching for nearby service partner...</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Costing & Review actions -->
+                    <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Grand Total Paid (via {{ booking.payment_method }})</div>
+                            <div style="font-size: 1.6rem; font-family: var(--font-heading); font-weight: 700; color: var(--accent);">₹{{ booking.price | int }}</div>
+                        </div>
+                        
+                        <div>
+                            {% if booking.status in ['pending', 'accepted'] %}
+                                <button onclick="cancelBooking({{ booking.id }})" class="btn-secondary" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Cancel Booking
+                                </button>
+                            {% elif booking.status == 'completed' %}
+                                {% if booking.review %}
+                                    <div style="text-align: right; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--border-radius-sm); padding: 0.5rem 0.8rem; font-size: 0.85rem;">
+                                        <span style="color: var(--warning); font-weight: 600;">{{ '★' * booking.review.rating }}</span>
+                                        <p style="margin-top: 0.2rem; color: var(--text-secondary); italic;">"{{ booking.review.comment }}"</p>
+                                    </div>
+                                {% else %}
+                                    <button onclick="openReviewModal({{ booking.id }})" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                        <i data-lucide="star" style="width: 14px; height: 14px;"></i> Rate & Review
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Horizontal progress lifecycle bar -->
+                {% if booking.status != 'cancelled' %}
+                    <div class="booking-lifecycle">
+                        <div class="lifecycle-step completed">
+                            <div class="lifecycle-dot"></div>
+                            <span>Booked</span>
+                        </div>
+                        <div class="lifecycle-step {% if booking.status in ['accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'pending' %}active{% endif %}">
+                            <div class="lifecycle-dot"></div>
+                            <span>Accepted</span>
+                        </div>
+                        <div class="lifecycle-step {% if booking.status in ['on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'accepted' %}active{% endif %}">
+                            <div class="lifecycle-dot"></div>
+                            <span>On the Way</span>
+                        </div>
+                        <div class="lifecycle-step {% if booking.status in ['in_progress', 'completed'] %}completed{% elif booking.status == 'on_the_way' %}active{% endif %}">
+                            <div class="lifecycle-dot"></div>
+                            <span>In Progress</span>
+                        </div>
+                        <div class="lifecycle-step {% if booking.status == 'completed' %}completed{% elif booking.status == 'in_progress' %}active{% endif %}">
+                            <div class="lifecycle-dot"></div>
+                            <span>Completed</span>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="glass-card" style="text-align: center; padding: 4rem 2rem;">
+                <i data-lucide="calendar" style="width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto;"></i>
+                <h3>No Bookings Placed Yet</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem; margin-top: 0.5rem;">Explore service categories and book certified experts at upfront rates.</p>
+                <a href="{{ url_for('services') }}" class="btn-primary">Browse Services <i data-lucide="arrow-right"></i></a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

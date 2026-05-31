@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container fade-in" style="max-width: 550px;">
+    <div class="glass-card">
+        <div class="auth-header">
+            <h2>Join <span class="gradient-text">Purakam</span></h2>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem;">Create a customer or professional partner account</p>
+        </div>
+
+        <form action="{{ url_for('register') }}" method="POST">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" class="form-input" placeholder="Rajesh Kumar" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone Number (+91)</label>
+                    <input type="text" id="phone" name="phone" class="form-input" placeholder="9876543210" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="name@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password (min 6 chars)</label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Full Address / Location (India)</label>
+                <input type="text" id="address" name="address" class="form-input" placeholder="Flat No., Apt, Street, Locality, City" required>
+            </div>
+
+            <!-- Role Selection -->
+            <div class="form-group">
+                <label style="margin-bottom: 0.6rem; display: block;">I am joining as a:</label>
+                <div style="display: flex; gap: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="role" value="customer" checked onclick="togglePartnerFields(false)" style="accent-color: var(--primary); width: 16px; height: 16px;">
+                        <span>Customer (Seek services)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="role" value="partner" onclick="togglePartnerFields(true)" style="accent-color: var(--primary); width: 16px; height: 16px;">
+                        <span>Service Partner (Earn money)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Expandable Service Professional Fields -->
+            <div id="partner-specific-fields" style="display: none; border-top: 1px solid var(--border-glass); padding-top: 1.5rem; margin-top: 1.5rem;" class="fade-in">
+                <h4 style="color: #c084fc; margin-bottom: 1rem;">Service Provider Profile Details</h4>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="service_category">Service Specialty</label>
+                        <select id="service_category" name="service_category" class="filter-select">
+                            {% for cat in categories %}
+                                <option value="{{ cat.name }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hourly_rate">Hourly Charge Rate (₹)</label>
+                        <input type="number" id="hourly_rate" name="hourly_rate" class="form-input" placeholder="250" value="250" min="100" max="2000">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="bio">Professional Summary / Bio</label>
+                    <textarea id="bio" name="bio" class="form-input" placeholder="Briefly describe your skill, experience, and tools..." style="height: 80px; resize: none;"></textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1.5rem;">
+                <i data-lucide="user-plus"></i> Create Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account? <a href="{{ url_for('login') }}">Sign In</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePartnerFields(show) {
+        const fields = document.getElementById("partner-specific-fields");
+        const categoryField = document.getElementById("service_category");
+        const rateField = document.getElementById("hourly_rate");
+
+        if (show) {
+            fields.style.display = "block";
+            categoryField.setAttribute("required", "required");
+            rateField.setAttribute("required", "required");
+        } else {
+            fields.style.display = "none";
+            categoryField.removeAttribute("required");
+            rateField.removeAttribute("required");
+        }
+    }
+</script>
+{% endblock %}
