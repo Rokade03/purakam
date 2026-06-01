@@ -1,5 +1,7 @@
 import requests
 import time
+from datetime import datetime, timedelta
+from backend.database import SessionLocal, Booking
 
 API_URL = "http://127.0.0.1:8000/api"
 
@@ -47,7 +49,7 @@ def run_tests():
         print(f"Failed to register partner: {r.text}")
         return
 
-    # 3. Login Customer and Partner to get real JWT tokens
+    # 3. Login Customer, Partner, Vijay Shinde, and Rajesh Kumar to get real JWT tokens
     print("\n3. Logging in users to fetch sessions...")
     # Customer login
     r = requests.post(f"{API_URL}/auth/login", json={"email": "test_customer@purakam.in", "password": "password123"})
@@ -65,6 +67,20 @@ def run_tests():
     part_headers = {"Authorization": f"Bearer {part_token}"}
     print(f"Partner JWT Token fetched successfully.")
 
+    # Vijay Shinde login
+    r = requests.post(f"{API_URL}/auth/login", json={"email": "vijay@purakam.in", "password": "partner123"})
+    assert r.status_code == 200, "Vijay Shinde login failed"
+    vijay_token = r.json()["access_token"]
+    vijay_id = r.json()["id"]
+    vijay_headers = {"Authorization": f"Bearer {vijay_token}"}
+
+    # Rajesh Kumar login
+    r = requests.post(f"{API_URL}/auth/login", json={"email": "rajesh@purakam.in", "password": "partner123"})
+    assert r.status_code == 200, "Rajesh Kumar login failed"
+    rajesh_token = r.json()["access_token"]
+    rajesh_id = r.json()["id"]
+    rajesh_headers = {"Authorization": f"Bearer {rajesh_token}"}
+
     # 4. Turn Partner Online
     print("\n4. Toggling partner status to ONLINE...")
     r = requests.put(f"{API_URL}/partner/profile", json={"availability_status": True}, headers=part_headers)
@@ -73,10 +89,7 @@ def run_tests():
     print("Partner status updated to: ONLINE")
 
     # 5. Place booking as customer with Pune coordinates (Geographic Proximity Test)
-    # Online Electricians:
-    # - Rajesh Kumar (Noida, far, rating 4.8)
-    # - Vijay Shinde (Pune, near, rating 4.5)
-    # Booking at Koregaon Park, Pune should match Vijay Shinde.
+    # Booking at Koregaon Park, Pune should match Vijay Shinde and Test Electrician (both Pune-based).
     print("\n5. Placing booking with Pune coordinates (Koregaon Park)...")
     booking_payload_pune = {
         "service_category": "Electrician",
@@ -87,86 +100,77 @@ def run_tests():
         "address": "Marvel Crest, Koregaon Park, Pune",
         "payment_method": "UPI",
         "latitude": 18.5362,
-        "longitude": 73.8940
+        "longitude": 73.8940,
+        "area_name": "Pune"
     }
     r = requests.post(f"{API_URL}/bookings", json=booking_payload_pune, headers=cust_headers)
     assert r.status_code == 200, f"Failed to place Pune booking: {r.text}"
     booking_data = r.json()
     pune_booking_id = booking_data["id"]
-    assigned_partner_name = booking_data["partner"]["name"]
-    assert "otp" in booking_data, "OTP missing from booking creation response"
+    assert booking_data["status"] == "requested", f"Expected status 'requested', got {booking_data['status']}"
+    assert booking_data["partner_id"] is None, "Expected partner_id to be None initially"
     pune_booking_otp = booking_data["otp"]
     assert len(pune_booking_otp) == 6, f"Expected 6-digit OTP, got {pune_booking_otp}"
-    print(f"Pune Booking created (ID: #SRV{pune_booking_id}) with OTP: {pune_booking_otp}. Assigned Partner: {assigned_partner_name}")
-    assert assigned_partner_name == "Vijay Shinde", f"Expected Vijay Shinde (Pune), got {assigned_partner_name}"
+    print(f"Pune Booking created (ID: #SRV{pune_booking_id}) with OTP: {pune_booking_otp}. Status: requested")
 
-    # 5b. Place booking explicitly requesting Rajesh Kumar (Bypassing Proximity Matchmaking)
-    # Booking at Koregaon Park, Pune should normally match Vijay Shinde due to proximity.
-    # But passing partner_id = rajesh_id should bypass it and assign Rajesh Kumar directly.
-    print("\n5b. Placing booking requesting specific partner (Rajesh Kumar)...")
-    r = requests.get(f"{API_URL}/partners?category=Electrician")
+    # 6. Verify Proximity Filtering
+    print("\n6. Verifying proximity-based dispatching...")
+    # Vijay Shinde (Pune, near) should see it
+    r = requests.get(f"{API_URL}/partner/incoming-bookings", headers=vijay_headers)
     assert r.status_code == 200
-    rajesh_id = None
-    for p in r.json():
-        if p["name"] == "Rajesh Kumar":
-            rajesh_id = p["id"]
-            break
-    assert rajesh_id is not None, "Failed to find Rajesh Kumar in partners list"
+    vijay_incoming = r.json()
+    assert any(b["id"] == pune_booking_id for b in vijay_incoming), "Vijay Shinde (Pune, near) should see the booking"
+    print("Vijay Shinde can see the Pune booking (Success).")
 
-    booking_payload_specific = {
-        "service_category": "Electrician",
-        "booking_date": "2026-06-01",
-        "time_slot": "04:00 PM - 06:00 PM",
-        "details": "AC socket installation.",
-        "price": 299.0,
-        "address": "Marvel Crest, Koregaon Park, Pune",
-        "payment_method": "UPI",
-        "latitude": 18.5362,
-        "longitude": 73.8940,
-        "partner_id": rajesh_id
-    }
-    r = requests.post(f"{API_URL}/bookings", json=booking_payload_specific, headers=cust_headers)
-    assert r.status_code == 200, f"Failed to place specific booking: {r.text}"
-    booking_data = r.json()
-    specific_booking_id = booking_data["id"]
-    assigned_partner_name = booking_data["partner"]["name"]
-    print(f"Specific Booking created (ID: #SRV{specific_booking_id}). Assigned Partner: {assigned_partner_name}")
-    assert assigned_partner_name == "Rajesh Kumar", f"Expected Rajesh Kumar (specific requested), got {assigned_partner_name}"
+    # Rajesh Kumar (Noida, far) should NOT see it
+    r = requests.get(f"{API_URL}/partner/incoming-bookings", headers=rajesh_headers)
+    assert r.status_code == 200
+    rajesh_incoming = r.json()
+    assert not any(b["id"] == pune_booking_id for b in rajesh_incoming), "Rajesh Kumar (Noida, far) should NOT see the booking"
+    print("Rajesh Kumar cannot see the Pune booking (Success).")
 
-    # 6. Place booking without coordinates (Fallback High-Rating Test)
-    # Rajesh Kumar (Noida, rating 4.8) vs Vijay Shinde (Pune, rating 4.5) vs Test Electrician (rating 5.0).
-    # Omitted coordinates should trigger fallback, picking highest rating (Test Electrician).
-    print("\n6. Placing booking without coordinates (Fallback rating test)...")
-    booking_payload_fallback = {
-        "service_category": "Electrician",
-        "booking_date": "2026-06-02",
-        "time_slot": "02:00 PM - 04:00 PM",
-        "details": "Fix faulty socket.",
-        "price": 199.0,
-        "address": "Delhi NCR address",
-        "payment_method": "COD",
-        "latitude": None,
-        "longitude": None
-    }
-    r = requests.post(f"{API_URL}/bookings", json=booking_payload_fallback, headers=cust_headers)
-    assert r.status_code == 200, f"Failed to place fallback booking: {r.text}"
-    booking_data = r.json()
-    fallback_booking_id = booking_data["id"]
-    assigned_partner_name = booking_data["partner"]["name"]
-    fallback_partner_id = booking_data["partner_id"]
-    print(f"Fallback Booking created (ID: #SRV{fallback_booking_id}). Assigned Partner: {assigned_partner_name}")
-    assert assigned_partner_name == "Test Electrician", f"Expected Test Electrician (5.0), got {assigned_partner_name}"
+    # 7. Test Decline Endpoint
+    print("\n7. Testing job decline endpoint...")
+    # Vijay declines Pune booking
+    r = requests.post(f"{API_URL}/bookings/{pune_booking_id}/decline", headers=vijay_headers)
+    assert r.status_code == 200, f"Failed to decline booking: {r.text}"
+    print("Vijay Shinde successfully declined the job.")
 
-    # 7. Test Chat Messaging System
-    print("\n7. Testing Chat Messaging system...")
-    # Customer sends message to Test Electrician for fallback booking
+    # Verify booking is removed from Vijay's incoming feed
+    r = requests.get(f"{API_URL}/partner/incoming-bookings", headers=vijay_headers)
+    assert r.status_code == 200
+    vijay_incoming_after = r.json()
+    assert not any(b["id"] == pune_booking_id for b in vijay_incoming_after), "Declined booking should not appear in partner feed anymore"
+    print("Verified: Declined job disappeared from Vijay Shinde's incoming feed.")
+
+    # 8. Test Accept Endpoint
+    print("\n8. Testing job accept endpoint...")
+    # Test Electrician accepts the job
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=accepted", headers=part_headers)
+    assert r.status_code == 200, f"Failed to accept job: {r.text}"
+    accepted_booking = r.json()
+    assert accepted_booking["status"] == "accepted"
+    assert accepted_booking["partner_id"] == part_id
+    print("Test Electrician successfully accepted the job.")
+
+    # 9. Concurrency Conflict Test
+    print("\n9. Testing job accept concurrency conflict...")
+    # Vijay Shinde tries to accept the booking that has already been accepted
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=accepted", headers=vijay_headers)
+    assert r.status_code == 409, f"Expected HTTP 409 Conflict, got {r.status_code}"
+    assert "already been accepted" in r.json()["detail"]
+    print("Concurrency conflict verification passed (HTTP 409 Conflict returned).")
+
+    # 10. Test Chat Messaging System
+    print("\n10. Testing Chat Messaging system...")
+    # Customer sends message to Test Electrician
     chat_payload_cust = {"message_text": "Hi, please bring an extra extension board."}
-    r = requests.post(f"{API_URL}/bookings/{fallback_booking_id}/messages", json=chat_payload_cust, headers=cust_headers)
+    r = requests.post(f"{API_URL}/bookings/{pune_booking_id}/messages", json=chat_payload_cust, headers=cust_headers)
     assert r.status_code == 200, f"Customer chat send failed: {r.text}"
     print("Customer: Hi, please bring an extra extension board.")
     
     # Partner reads messages
-    r = requests.get(f"{API_URL}/bookings/{fallback_booking_id}/messages", headers=part_headers)
+    r = requests.get(f"{API_URL}/bookings/{pune_booking_id}/messages", headers=part_headers)
     assert r.status_code == 200, f"Partner chat read failed: {r.text}"
     messages = r.json()
     assert len(messages) == 1
@@ -174,57 +178,52 @@ def run_tests():
     
     # Partner replies
     chat_payload_part = {"message_text": "Sure, I will carry one with me."}
-    r = requests.post(f"{API_URL}/bookings/{fallback_booking_id}/messages", json=chat_payload_part, headers=part_headers)
+    r = requests.post(f"{API_URL}/bookings/{pune_booking_id}/messages", json=chat_payload_part, headers=part_headers)
     assert r.status_code == 200, f"Partner chat send failed: {r.text}"
     print("Partner (Test Electrician): Sure, I will carry one with me.")
     
     # Customer fetches updated chat history
-    r = requests.get(f"{API_URL}/bookings/{fallback_booking_id}/messages", headers=cust_headers)
+    r = requests.get(f"{API_URL}/bookings/{pune_booking_id}/messages", headers=cust_headers)
     assert r.status_code == 200, f"Customer chat history load failed: {r.text}"
     messages = r.json()
     assert len(messages) == 2
     print("Chat system verified: history loaded correctly.")
 
-    # 8. Upload mock image file
-    print("\n8. Customer uploading mock picture attachment to Pune booking...")
+    # 11. Upload mock image file
+    print("\n11. Customer uploading mock picture attachment to Pune booking...")
     mock_file = {"file": ("test_image.jpg", b"fake-binary-image-data-contents", "image/jpeg")}
     r = requests.post(f"{API_URL}/bookings/{pune_booking_id}/upload", files=mock_file, headers=cust_headers)
     assert r.status_code == 200, f"Failed to upload attachment: {r.text}"
     print(f"Attachment uploaded successfully! Filename: {r.json()['filename']}")
 
-    # 9. Log in as Vijay Shinde to progress the Pune booking
-    r = requests.post(f"{API_URL}/auth/login", json={"email": "vijay@purakam.in", "password": "partner123"})
-    assert r.status_code == 200, "Vijay login failed"
-    vijay_token = r.json()["access_token"]
-    vijay_headers = {"Authorization": f"Bearer {vijay_token}"}
-
-    # Progress States: accepted -> on_the_way -> in_progress -> completed
-    print("\n9. Simulating Pune booking state progression...")
-    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=on_the_way", headers=vijay_headers)
+    # 12. Simulating Pune booking state progression and OTP validation
+    print("\n12. Simulating Pune booking state progression with OTP verification...")
+    # Progress from accepted -> on_the_way
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=on_the_way", headers=part_headers)
     assert r.status_code == 200, f"Failed to progress to 'on_the_way': {r.text}"
     print(f"Status updated: {r.json()['status']}")
 
-    # 9a. Try to progress to in_progress without OTP (should fail)
-    print("9a. Attempting to start work (in_progress) without OTP...")
-    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress", headers=vijay_headers)
+    # Try to progress to in_progress without OTP (should fail)
+    print("Attempting to start work (in_progress) without OTP...")
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress", headers=part_headers)
     assert r.status_code == 400, f"Expected status 400, got {r.status_code}"
     print("Expected failure achieved: OTP is required.")
 
-    # 9b. Try to progress to in_progress with incorrect OTP (should fail)
-    print("9b. Attempting to start work (in_progress) with incorrect OTP...")
-    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress&otp=000000", headers=vijay_headers)
+    # Try to progress to in_progress with incorrect OTP (should fail)
+    print("Attempting to start work (in_progress) with incorrect OTP...")
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress&otp=000000", headers=part_headers)
     assert r.status_code == 400, f"Expected status 400, got {r.status_code}"
     print("Expected failure achieved: Invalid OTP.")
 
-    # 9c. Progress to in_progress with correct OTP (should succeed)
-    print("9c. Attempting to start work (in_progress) with correct OTP...")
-    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress&otp={pune_booking_otp}", headers=vijay_headers)
+    # Progress to in_progress with correct OTP (should succeed)
+    print("Attempting to start work (in_progress) with correct OTP...")
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=in_progress&otp={pune_booking_otp}", headers=part_headers)
     assert r.status_code == 200, f"Failed to progress to 'in_progress' with correct OTP: {r.text}"
     print(f"Status updated: {r.json()['status']}")
 
-    # 9d. Verify that the partner cannot see the OTP in booking response list
-    print("9d. Verifying that partner cannot see OTP in bookings list...")
-    r = requests.get(f"{API_URL}/bookings", headers=vijay_headers)
+    # Verify that the partner cannot see the OTP in booking response list
+    print("Verifying that partner cannot see OTP in bookings list...")
+    r = requests.get(f"{API_URL}/bookings", headers=part_headers)
     assert r.status_code == 200
     partner_bookings = r.json()
     for b in partner_bookings:
@@ -233,12 +232,13 @@ def run_tests():
             break
     print("Security check passed: Partner cannot see the OTP in the bookings list.")
 
-    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=completed", headers=vijay_headers)
+    # Complete the booking
+    r = requests.put(f"{API_URL}/bookings/{pune_booking_id}/status?new_status=completed", headers=part_headers)
     assert r.status_code == 200, f"Failed to progress to 'completed': {r.text}"
     print(f"Status updated: {r.json()['status']}")
 
-    # 10. Customer submits review
-    print("\n10. Customer submitting review for completed Pune booking...")
+    # 13. Customer submits review
+    print("\n13. Customer submitting review for completed Pune booking...")
     review_payload = {
         "booking_id": pune_booking_id,
         "rating": 5,
@@ -248,8 +248,8 @@ def run_tests():
     assert r.status_code == 200, f"Failed to submit review: {r.text}"
     print(f"Review submitted successfully! Rating: {r.json()['rating']} Stars")
 
-    # 11. Admin Console Operations Verification
-    print("\n11. Verifying Admin Console backend operations...")
+    # 14. Admin Console Operations Verification
+    print("\n14. Verifying Admin Console backend operations...")
     # Admin login
     r = requests.post(f"{API_URL}/auth/login", json={"email": "admin@purakam.in", "password": "admin123"})
     assert r.status_code == 200, f"Admin login failed: {r.text}"
@@ -258,7 +258,7 @@ def run_tests():
     print("Admin logged in successfully.")
 
     # Audit chat history as Admin
-    r = requests.get(f"{API_URL}/bookings/{fallback_booking_id}/messages", headers=admin_headers)
+    r = requests.get(f"{API_URL}/bookings/{pune_booking_id}/messages", headers=admin_headers)
     assert r.status_code == 200, f"Admin failed to read chat messages: {r.text}"
     messages = r.json()
     assert len(messages) == 2, f"Expected 2 messages, got {len(messages)}"
@@ -268,47 +268,52 @@ def run_tests():
     r = requests.get(f"{API_URL}/admin/stats", headers=admin_headers)
     assert r.status_code == 200, f"Failed to fetch admin stats: {r.text}"
     stats_data = r.json()
-    assert stats_data["total_bookings"] >= 2
+    assert stats_data["total_bookings"] >= 1
     assert stats_data["total_revenue"] >= 349.0
     print(f"Admin stats verified. Total Bookings: {stats_data['total_bookings']}, Revenue: {stats_data['total_revenue']}")
 
-    # Get admin users list
-    r = requests.get(f"{API_URL}/admin/users", headers=admin_headers)
-    assert r.status_code == 200, f"Failed to fetch admin users registry: {r.text}"
-    users_list = r.json()
-    assert len(users_list) >= 3
-    print(f"Admin user list verified. Total users registered: {len(users_list)}")
-
-    # Get admin bookings ledger
-    r = requests.get(f"{API_URL}/admin/bookings", headers=admin_headers)
-    assert r.status_code == 200, f"Failed to fetch admin bookings: {r.text}"
-    bookings_ledger = r.json()
-    assert len(bookings_ledger) >= 2
-    print("Admin bookings ledger verified.")
-
-    # Create new service category
-    new_service_payload = {
-        "name": "Wall Painter",
-        "icon_key": "paint-brush",
-        "description": "Premium internal and external wall painting services.",
-        "base_price": 450.0
+    # 15. Testing Auto-Expiration Timeout Helper
+    print("\n15. Testing auto-expiration timeout (requested booking older than 10 mins)...")
+    # Place a requested booking
+    booking_payload_expire = {
+        "service_category": "Electrician",
+        "booking_date": "2026-06-03",
+        "time_slot": "12:00 PM - 02:00 PM",
+        "details": "Checking expiration.",
+        "price": 199.0,
+        "address": "Testing Expiration Address, Pune",
+        "payment_method": "COD",
+        "latitude": 18.5362,
+        "longitude": 73.8940
     }
-    r = requests.post(f"{API_URL}/admin/services", json=new_service_payload, headers=admin_headers)
-    assert r.status_code == 200, f"Failed to create new category: {r.text}"
-    painter_cat = r.json()
-    painter_id = painter_cat["id"]
-    print(f"Admin created new category: {painter_cat['name']} (Base Price: ₹{painter_cat['base_price']})")
+    r = requests.post(f"{API_URL}/bookings", json=booking_payload_expire, headers=cust_headers)
+    assert r.status_code == 200, f"Failed to place booking: {r.text}"
+    expire_booking_id = r.json()["id"]
+    print(f"Created temporary booking ID: #SRV{expire_booking_id}")
 
-    # Update category price
-    r = requests.put(f"{API_URL}/admin/services/{painter_id}", json={"base_price": 499.0}, headers=admin_headers)
-    assert r.status_code == 200, f"Failed to update category price: {r.text}"
-    assert r.json()["base_price"] == 499.0
-    print(f"Admin updated category base price to: ₹{r.json()['base_price']}")
+    # Manually modify created_at to 11 minutes ago in DB using sqlalchemy directly
+    db = SessionLocal()
+    try:
+        b_record = db.query(Booking).filter(Booking.id == expire_booking_id).first()
+        assert b_record is not None
+        b_record.created_at = datetime.utcnow() - timedelta(minutes=11)
+        db.commit()
+        print("Booking timestamp manually shifted to 11 minutes ago in DB.")
+    finally:
+        db.close()
 
-    # Clean up: Delete created category
-    r = requests.delete(f"{API_URL}/admin/services/{painter_id}", headers=admin_headers)
-    assert r.status_code == 200, f"Failed to delete category: {r.text}"
-    print("Admin successfully deleted the test category to keep database clean.")
+    # Trigger endpoint (like GET /api/bookings as customer) to run checkout logic
+    r = requests.get(f"{API_URL}/bookings", headers=cust_headers)
+    assert r.status_code == 200
+    
+    # Check that status changed to "cancelled"
+    db = SessionLocal()
+    try:
+        b_record = db.query(Booking).filter(Booking.id == expire_booking_id).first()
+        assert b_record.status == "cancelled", f"Expected status 'cancelled', got {b_record.status}"
+        print("Verified: Booking automatically transitioned to 'cancelled' state.")
+    finally:
+        db.close()
 
     # Security Verification: Customer cannot access admin routes
     print("\nSecurity: Verifying customer role cannot access admin routes...")

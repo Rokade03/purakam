@@ -2,156 +2,52 @@
 
 {% block content %}
 <div class="fade-in">
-    <div style="margin-bottom: 2rem;">
-        <h2>Find Service Professionals in Your Area</h2>
-        <p style="color: var(--text-secondary);">Browse online partners or filter by household category</p>
+    <div style="margin-bottom: 2.5rem; text-align: center;">
+        <h2>Select an Electrical Service Category</h2>
+        <p style="color: var(--text-secondary); max-width: 600px; margin: 0.5rem auto 0 auto;">Describe your issue, upload photos, and broadcast your request to all certified technicians in your area instantly.</p>
     </div>
 
-    <div class="services-layout">
-        <!-- Sidebar filters -->
-        <aside class="filter-sidebar">
-            <div class="glass-card scroll-reveal" style="padding: 1.5rem;">
-                <h3 style="margin-bottom: 1.5rem; font-size: 1.15rem; font-family: var(--font-heading); display: flex; align-items: center; gap: 0.5rem; letter-spacing: -0.02em;">
-                    <i data-lucide="sliders-horizontal" style="color: var(--primary); width: 18px; height: 18px;"></i> Filters
-                </h3>
-                
-                <div class="filter-group">
-                    <label style="margin-bottom: 0.8rem; display: block; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Category specialty</label>
-                    <div class="category-filter-list">
-                        <a href="#" class="category-filter-item {% if not selected_category %}active{% endif %}" onclick="filterCategory(''); return false;">
-                            <i data-lucide="layout-grid"></i>
-                            <span>All Services</span>
-                        </a>
-                        {% for cat in categories %}
-                            <a href="#" class="category-filter-item {% if selected_category == cat.name %}active{% endif %}" onclick="filterCategory('{{ cat.name }}'); return false;">
-                                <i data-lucide="{{ cat.icon_key }}"></i>
-                                <span>{{ cat.name }}</span>
-                            </a>
-                        {% endfor %}
+    <!-- Category Grid -->
+    <div class="category-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+        {% for cat in categories %}
+            <div class="glass-card scroll-reveal" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.8rem; height: 100%;">
+                <div>
+                    <!-- Category Icon Header -->
+                    <div style="width: 50px; height: 50px; background: rgba(0, 0, 0, 0.05); border-radius: var(--border-radius-sm); display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; border: 1px solid var(--border-glass);">
+                        <i data-lucide="{{ cat.icon_key }}" style="width: 24px; height: 24px; color: var(--text-primary);"></i>
                     </div>
-                </div>
-
-                <div class="filter-group" style="margin-top: 2rem;">
-                    <label style="margin-bottom: 0.8rem; display: block; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Availability</label>
-                    <div class="segment-control">
-                        <button type="button" class="segment-btn active" id="btn-status-all" onclick="updateStatusFilter('all')">All Partners</button>
-                        <button type="button" class="segment-btn" id="btn-status-online" onclick="updateStatusFilter('online')">Active Now</button>
-                    </div>
+                    
+                    <h3 style="margin-bottom: 0.8rem; font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem;">{{ cat.name }}</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.5rem;">{{ cat.description }}</p>
                 </div>
                 
-                <!-- Live Provider Map Simulator widget -->
-                <div class="filter-group" style="margin-top: 2rem;">
-                    <label style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                        <span>Live Partner Map</span>
-                        <span style="color: var(--success); font-size: 0.75rem; display: flex; align-items: center; gap: 0.2rem;">
-                            <span style="width: 6px; height: 6px; background: var(--success); border-radius: 50%;"></span> Live
-                        </span>
-                    </label>
-                    
-                    <div class="map-simulator">
-                        <!-- Customer Marker -->
-                        <div class="map-marker pulse" style="top: 50%; left: 50%; background: var(--accent);"></div>
-                        <!-- Mock Partner Markers -->
-                        <div class="map-marker" style="top: 30%; left: 25%; background: var(--primary);" title="Electrician Rajesh"></div>
-                        <div class="map-marker" style="top: 70%; left: 80%; background: var(--primary);" title="AC Tech Amit"></div>
-                        <div class="map-marker" style="top: 20%; left: 65%; background: var(--primary);" title="Geyser Tech Priya"></div>
-                    </div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: center;">Showing verified partners near Mumbai, MH</p>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Right Side: Partner Listings -->
-        <section class="partner-list" id="partners-listing-container">
-            {% for partner in partners %}
-                {% set prof = partner.partner_profile %}
-                <div class="partner-card fade-in scroll-reveal" data-category="{{ prof.service_category }}" data-online="{{ prof.availability_status }}">
-                    <!-- Initials Avatar -->
-                    <div class="partner-avatar">
-                        {{ partner.name[0] }}{{ partner.name.split(' ')[1][0] if partner.name.split(' ')|length > 1 else '' }}
+                <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-glass); padding-top: 1.2rem; margin-top: 1rem;">
+                    <div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; text-transform: uppercase; font-weight: 600;">Base Rate</p>
+                        <p style="font-size: 1.3rem; font-weight: 700; font-family: var(--font-heading); color: var(--accent); margin: 0;">₹{{ cat.base_price | int }}</p>
                     </div>
                     
-                    <!-- Partner Info -->
-                    <div class="partner-info">
-                        <h3>
-                            <span>{{ partner.name }}</span>
-                            {% if prof.availability_status %}
-                                <span class="status-indicator status-online"><i data-lucide="wifi" style="width: 10px; height: 10px;"></i> Online</span>
-                            {% else %}
-                                <span class="status-indicator status-offline"><i data-lucide="wifi-off" style="width: 10px; height: 10px;"></i> Offline</span>
-                            {% endif %}
-                        </h3>
-                        
-                        <div class="partner-details">
-                            <span class="rating"><i data-lucide="star"></i> {{ prof.rating }}</span>
-                            <span><i data-lucide="check-square"></i> {{ prof.completed_jobs }} Jobs Completed</span>
-                            <span style="color: #c084fc;"><i data-lucide="shield-check"></i> {{ prof.service_category }}</span>
-                        </div>
-                        
-                        <p class="partner-bio">{{ prof.bio }}</p>
-                    </div>
-                    
-                    <!-- Rates & Booking Actions -->
-                    <div class="partner-actions">
-                        <div class="partner-price">
-                            ₹{{ prof.hourly_rate | int }}<span>/hr</span>
-                        </div>
-                        
-                        {% if session.get('user_id') %}
-                            {% if session.get('user_role') == 'partner' %}
-                                <button class="btn-secondary" style="font-size: 0.85rem;" disabled>Partners Only</button>
-                            {% else %}
-                                <a href="{{ url_for('book', category_name=prof.service_category, partner_id=partner.id) }}" class="btn-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-                                    Book Service <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
-                                </a>
-                            {% endif %}
+                    {% if session.get('user_id') %}
+                        {% if session.get('user_role') == 'partner' %}
+                            <button class="btn-secondary" style="font-size: 0.8rem; padding: 0.5rem 1rem;" disabled>Partners Only</button>
                         {% else %}
-                            <a href="{{ url_for('login', next=url_for('book', category_name=prof.service_category, partner_id=partner.id)) }}" class="btn-secondary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-                                Login to Book
+                            <a href="{{ url_for('book', category_name=cat.name) }}" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.4rem;">
+                                Book Now <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
                             </a>
                         {% endif %}
-                    </div>
+                    {% else %}
+                        <a href="{{ url_for('login', next=url_for('book', category_name=cat.name)) }}" class="btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.4rem;">
+                            Login to Book <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
+                        </a>
+                    {% endif %}
                 </div>
-            {% else %}
-                <div class="glass-card" style="text-align: center; color: var(--text-muted);">
-                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; margin: 0 auto 1rem auto; display: block; color: var(--text-muted);"></i>
-                    <p>No service providers found. Try expanding filters or registers.</p>
-                </div>
-            {% endfor %}
-        </section>
+            </div>
+        {% else %}
+            <div class="glass-card" style="text-align: center; color: var(--text-muted); grid-column: 1 / -1; padding: 4rem 2rem;">
+                <i data-lucide="alert-circle" style="width: 48px; height: 48px; margin: 0 auto 1rem auto; display: block;"></i>
+                <p>No service categories configured yet.</p>
+            </div>
+        {% endfor %}
     </div>
 </div>
-
-<script>
-    function filterCategory(category) {
-        // Redirect with query param to trigger backend filter
-        const url = new URL(window.location.href);
-        if (category) {
-            url.searchParams.set("category", category);
-        } else {
-            url.searchParams.delete("category");
-        }
-        window.location.href = url.toString();
-    }
-
-    function updateStatusFilter(val) {
-        // Update active class on segment buttons
-        document.querySelectorAll(".segment-btn").forEach(btn => btn.classList.remove("active"));
-        if (val === 'online') {
-            document.getElementById("btn-status-online").classList.add("active");
-        } else {
-            document.getElementById("btn-status-all").classList.add("active");
-        }
-        
-        const cards = document.querySelectorAll("#partners-listing-container .partner-card");
-        cards.forEach(card => {
-            const isOnline = card.dataset.online === "True";
-            if (val === "online" && !isOnline) {
-                card.style.display = "none";
-            } else {
-                card.style.display = "grid";
-            }
-        });
-    }
-</script>
 {% endblock %}

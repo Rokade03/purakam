@@ -78,7 +78,7 @@ class Booking(Base):
     time_slot = Column(String, nullable=False)  # e.g., "10:00 AM - 12:00 PM"
     details = Column(Text, nullable=True)
     price = Column(Float, nullable=False)  # Final price (₹)
-    status = Column(String, default="pending")  # "pending", "accepted", "on_the_way", "in_progress", "completed", "cancelled"
+    status = Column(String, default="requested")  # "requested", "accepted", "on_the_way", "in_progress", "completed", "cancelled"
     address = Column(String, nullable=False)
     payment_method = Column(String, default="UPI")  # "UPI", "COD", "Card"
     payment_status = Column(String, default="pending")  # "pending", "completed"
@@ -86,6 +86,8 @@ class Booking(Base):
     otp = Column(String, nullable=True)                 # OTP code for work start verification
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    area_name = Column(String, nullable=True)
+    accepted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -118,6 +120,14 @@ class ChatMessage(Base):
     # Relationships
     booking = relationship("Booking", back_populates="messages")
     sender = relationship("User")
+
+class PartnerDeclinedBooking(Base):
+    __tablename__ = "partner_declined_bookings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    partner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 def get_db():
     db = SessionLocal()

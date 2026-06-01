@@ -81,12 +81,18 @@
                             <strong>Address:</strong> {{ booking.address }}
                         </div>
                         {% if booking.attachment_path %}
-                            <div class="booking-meta-row" style="margin-top: 0.8rem;">
-                                <i data-lucide="paperclip"></i>
-                                <strong>Problem Attachment:</strong>
-                                <a href="{{ BACKEND_BASE_URL }}/uploads/{{ booking.attachment_path }}" target="_blank" style="text-decoration: underline; color: var(--text-primary); font-weight: 500;">
-                                    View Uploaded File
-                                </a>
+                            <div class="booking-meta-row" style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">
+                                <div>
+                                    <i data-lucide="paperclip" style="vertical-align: middle; margin-right: 4px;"></i>
+                                    <strong>Problem Attachments:</strong>
+                                </div>
+                                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-left: 1.5rem; margin-top: 0.2rem;">
+                                    {% for img in booking.attachment_path.split(',') %}
+                                        <a href="{{ BACKEND_BASE_URL }}/uploads/{{ img }}" target="_blank" style="text-decoration: underline; color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem;">
+                                            <i data-lucide="image" style="width: 14px; height: 14px;"></i> View Attachment {{ loop.index }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
                             </div>
                         {% endif %}
                         
@@ -109,14 +115,17 @@
                                     {% endif %}
                                 </div>
                             {% else %}
-                                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--warning);">
-                                    <i data-lucide="loader" class="pulse" style="width: 18px;"></i>
-                                    <span style="font-size: 0.9rem; font-weight: 500;">Searching for nearby service partner...</span>
+                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; background: rgba(0, 0, 0, 0.02); padding: 0.8rem 1rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); width: 100%;">
+                                    <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary);">
+                                        <i data-lucide="radar" class="pulse" style="width: 20px; height: 20px; color: var(--accent);"></i>
+                                        <span style="font-size: 0.9rem; font-weight: 600;">Broadcasting to nearby partners...</span>
+                                    </div>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">First available technician will accept the job</span>
                                 </div>
                             {% endif %}
                         </div>
                         
-                        {% if booking.status not in ['completed', 'cancelled'] and booking.otp %}
+                        {% if booking.status not in ['completed', 'cancelled'] and booking.otp and booking.partner %}
                             <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid var(--border-glass); border-radius: var(--border-radius-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
                                 <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
                                     <i data-lucide="shield-check" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; color: var(--primary);"></i>
@@ -137,7 +146,7 @@
                         </div>
                         
                         <div>
-                            {% if booking.status in ['pending', 'accepted'] %}
+                            {% if booking.status in ['requested', 'accepted'] %}
                                 <button onclick="cancelBooking({{ booking.id }})" class="btn-secondary" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                     <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Cancel Booking
                                 </button>
@@ -160,21 +169,21 @@
                 <!-- Horizontal progress lifecycle bar -->
                 {% if booking.status != 'cancelled' %}
                     <div class="booking-lifecycle">
-                        <div class="lifecycle-step completed">
+                        <div class="lifecycle-step {% if booking.status in ['requested', 'accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% endif %}">
                             <div class="lifecycle-dot"></div>
-                            <span>Booked</span>
+                            <span>Requested</span>
                         </div>
-                        <div class="lifecycle-step {% if booking.status in ['accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'pending' %}active{% endif %}">
+                        <div class="lifecycle-step {% if booking.status in ['accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'requested' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
                             <span>Accepted</span>
                         </div>
                         <div class="lifecycle-step {% if booking.status in ['on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'accepted' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
-                            <span>On the Way</span>
+                            <span>En Route</span>
                         </div>
                         <div class="lifecycle-step {% if booking.status in ['in_progress', 'completed'] %}completed{% elif booking.status == 'on_the_way' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
-                            <span>In Progress</span>
+                            <span>Working</span>
                         </div>
                         <div class="lifecycle-step {% if booking.status == 'completed' %}completed{% elif booking.status == 'in_progress' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>

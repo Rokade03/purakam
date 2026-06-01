@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from . import database, schemas
-from .database import get_db, User, PartnerProfile, ServiceCategory, Booking, Review, ChatMessage, hash_password
+from .database import get_db, User, PartnerProfile, ServiceCategory, Booking, Review, ChatMessage, PartnerDeclinedBooking, hash_password
 
 import math
 from jose import jwt, JWTError
@@ -238,6 +238,20 @@ def update_partner_profile(
     db.refresh(profile)
     return profile
 
+DISPATCH_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_TIMEOUT_SECONDS", "600"))
+
+def check_and_expire_bookings(db: Session):
+    now = datetime.utcnow()
+    requested_bookings = db.query(Booking).filter(Booking.status == "requested").all()
+    expired_count = 0
+    for booking in requested_bookings:
+        elapsed = (now - booking.created_at).total_seconds()
+        if elapsed > DISPATCH_TIMEOUT_SECONDS:
+            booking.status = "cancelled"
+            expired_count += 1
+    if expired_count > 0:
+        db.commit()
+
 # === Booking Routes ===
 
 @app.post("/api/bookings", response_model=schemas.BookingResponse)
@@ -246,67 +260,23 @@ def create_booking(
     customer_id: int = Depends(get_current_user_id), 
     db: Session = Depends(get_db)
 ):
-    # Find active/online partners in this service category
-    online_partners = db.query(PartnerProfile).filter(
-        PartnerProfile.service_category == booking_data.service_category,
-        PartnerProfile.availability_status == True
-    ).all()
-    
-    assigned_partner_id = None
-    booking_status = "pending"
-    
-    # Check if a specific partner is requested directly
-    if booking_data.partner_id is not None:
-        partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == booking_data.partner_id).first()
-        if not partner_profile:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid service partner ID requested."
-            )
-        assigned_partner_id = booking_data.partner_id
-        # Directly accept if partner is online/available, else leave pending
-        booking_status = "accepted" if partner_profile.availability_status else "pending"
-        
-    # Auto-assign based on Proximity Haversine distance
-    elif online_partners and booking_data.latitude is not None and booking_data.longitude is not None:
-        partner_distances = []
-        for partner_profile in online_partners:
-            partner_user = db.query(User).filter(User.id == partner_profile.user_id).first()
-            if partner_user and partner_user.latitude is not None and partner_user.longitude is not None:
-                dist = calculate_haversine_distance(
-                    booking_data.latitude, booking_data.longitude,
-                    partner_user.latitude, partner_user.longitude
-                )
-                partner_distances.append((partner_profile, dist))
-        
-        if partner_distances:
-            partner_distances.sort(key=lambda x: x[1])  # Sort closest distance first
-            closest_partner = partner_distances[0][0]
-            assigned_partner_id = closest_partner.user_id
-            booking_status = "accepted"
-            
-    # Fallback: Auto-assign highest rated online partner if coordinates are missing
-    elif online_partners:
-        best_partner = max(online_partners, key=lambda p: p.rating)
-        assigned_partner_id = best_partner.user_id
-        booking_status = "accepted"
-
     otp_code = str(random.randint(100000, 999999))
     new_booking = Booking(
         customer_id=customer_id,
-        partner_id=assigned_partner_id,
+        partner_id=None,
         service_category=booking_data.service_category,
         booking_date=booking_data.booking_date,
         time_slot=booking_data.time_slot,
         details=booking_data.details,
         price=booking_data.price,
-        status=booking_status,
+        status="requested",
         address=booking_data.address,
         payment_method=booking_data.payment_method,
         payment_status="completed" if booking_data.payment_method == "UPI" else "pending",
         otp=otp_code,
         latitude=booking_data.latitude,
-        longitude=booking_data.longitude
+        longitude=booking_data.longitude,
+        area_name=booking_data.area_name
     )
     
     db.add(new_booking)
@@ -316,6 +286,7 @@ def create_booking(
 
 @app.get("/api/bookings", response_model=List[schemas.BookingResponse])
 def get_bookings(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    check_and_expire_bookings(db)
     user = db.query(User).filter(User.id == user_id).first()
     if user.role == "partner":
         bookings = db.query(Booking).filter(Booking.partner_id == user_id).order_by(Booking.id.desc()).all()
@@ -330,24 +301,99 @@ def get_bookings(user_id: int = Depends(get_current_user_id), db: Session = Depe
 
 @app.get("/api/partner/incoming-bookings", response_model=List[schemas.BookingResponse])
 def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    check_and_expire_bookings(db)
     partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == user_id).first()
     if not partner_profile:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only service partners can view incoming jobs"
         )
-    # Return all pending bookings matching partner's service category
+    
+    # Check provider availability (online/offline)
+    if not partner_profile.availability_status:
+        return []
+        
+    partner_user = db.query(User).filter(User.id == user_id).first()
+    
+    # Get declined booking IDs
+    declined_ids = [d.booking_id for d in db.query(PartnerDeclinedBooking).filter(PartnerDeclinedBooking.partner_id == user_id).all()]
+    
+    # Return all requested bookings matching partner's service category
     bookings = db.query(Booking).filter(
         Booking.service_category == partner_profile.service_category,
-        Booking.status == "pending"
+        Booking.status == "requested"
     ).order_by(Booking.id.desc()).all()
     
     result = []
     for b in bookings:
-        pydantic_b = schemas.BookingResponse.model_validate(b)
-        pydantic_b.otp = None
-        result.append(pydantic_b)
+        if b.id in declined_ids:
+            continue
+        
+        # Check area-based dispatch
+        is_in_area = False
+        
+        # 1. Coordinates check
+        if b.latitude is not None and b.longitude is not None and partner_user.latitude is not None and partner_user.longitude is not None:
+            dist = calculate_haversine_distance(
+                b.latitude, b.longitude,
+                partner_user.latitude, partner_user.longitude
+            )
+            if dist <= 30.0:
+                is_in_area = True
+        
+        # 2. Selected area_name check
+        if not is_in_area and b.area_name and partner_user.address:
+            if b.area_name.lower() in partner_user.address.lower():
+                is_in_area = True
+                
+        # 3. Fallback: address-based matching
+        if not is_in_area and not b.area_name:
+            b_addr = b.address.lower()
+            p_addr = (partner_user.address or "").lower()
+            cities = ["pune", "noida", "delhi", "ahmedabad", "bengaluru", "mumbai"]
+            for city in cities:
+                if city in b_addr and city in p_addr:
+                    is_in_area = True
+                    break
+            # If coordinates/area are missing, and cities are also not declared, allow by default for robustness
+            if not any(c in b_addr for c in cities) and not any(c in p_addr for c in cities):
+                is_in_area = True
+                
+        if is_in_area:
+            pydantic_b = schemas.BookingResponse.model_validate(b)
+            pydantic_b.otp = None
+            result.append(pydantic_b)
+            
     return result
+
+@app.post("/api/bookings/{booking_id}/decline")
+def decline_booking(booking_id: int, user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == user_id).first()
+    if not partner_profile:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only service partners can decline bookings"
+        )
+    
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    if booking.status != "requested":
+        raise HTTPException(status_code=400, detail="Can only decline active requested bookings")
+        
+    # Add to declined table if not already declined
+    existing = db.query(PartnerDeclinedBooking).filter(
+        PartnerDeclinedBooking.partner_id == user_id,
+        PartnerDeclinedBooking.booking_id == booking_id
+    ).first()
+    
+    if not existing:
+        declined_record = PartnerDeclinedBooking(partner_id=user_id, booking_id=booking_id)
+        db.add(declined_record)
+        db.commit()
+        
+    return {"detail": "Booking request declined successfully"}
 
 @app.put("/api/bookings/{booking_id}/status", response_model=schemas.BookingResponse)
 def update_booking_status(
@@ -363,10 +409,21 @@ def update_booking_status(
         
     user = db.query(User).filter(User.id == user_id).first()
     
-    # Partner Accepting a pending booking
-    if new_status == "accepted" and booking.status == "pending" and user.role == "partner":
+    # Partner Accepting a requested booking
+    if new_status == "accepted" and user.role == "partner":
+        if booking.status == "accepted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This booking request has already been accepted by another service provider."
+            )
+        elif booking.status != "requested":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This booking request is no longer available."
+            )
         booking.partner_id = user_id
         booking.status = "accepted"
+        booking.accepted_at = datetime.utcnow()
     # General status progressions by assigned partner
     elif user.role == "partner" and booking.partner_id == user_id:
         if new_status == "on_the_way":
@@ -392,7 +449,7 @@ def update_booking_status(
                 partner_profile.completed_jobs += 1
     # Customer cancels
     elif user.role == "customer" and booking.customer_id == user_id:
-        if new_status == "cancelled" and booking.status in ["pending", "accepted"]:
+        if new_status == "cancelled" and booking.status in ["requested", "accepted"]:
             booking.status = "cancelled"
         else:
             raise HTTPException(status_code=400, detail="Cannot cancel booking in current state")
@@ -464,7 +521,8 @@ def submit_review(
 @app.post("/api/bookings/{booking_id}/upload")
 async def upload_booking_attachment(
     booking_id: int,
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
@@ -476,24 +534,45 @@ async def upload_booking_attachment(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found or unauthorized")
         
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in [".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".avi", ".mkv", ".webm"]:
-        raise HTTPException(status_code=400, detail="Only standard images and videos are supported")
+    all_files = []
+    if file:
+        all_files.append(file)
+    if files:
+        all_files.extend(files)
         
-    filename = f"booking_{booking_id}_{int(datetime.utcnow().timestamp())}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    try:
-        with open(file_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    if not all_files:
+        raise HTTPException(status_code=400, detail="No files uploaded")
         
-    booking.attachment_path = filename
-    db.commit()
-    db.refresh(booking)
-    return {"filename": filename, "status": "success"}
+    saved_filenames = []
+    for f in all_files:
+        file_ext = os.path.splitext(f.filename)[1].lower()
+        if file_ext not in [".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".avi", ".mkv", ".webm"]:
+            raise HTTPException(status_code=400, detail=f"Unsupported format: {f.filename}")
+            
+        filename = f"booking_{booking_id}_{int(datetime.utcnow().timestamp())}_{random.randint(1000, 9999)}{file_ext}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        
+        try:
+            with open(file_path, "wb") as buffer:
+                content = await f.read()
+                buffer.write(content)
+            saved_filenames.append(filename)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+            
+    if saved_filenames:
+        if booking.attachment_path:
+            booking.attachment_path = f"{booking.attachment_path},{','.join(saved_filenames)}"
+        else:
+            booking.attachment_path = ",".join(saved_filenames)
+        db.commit()
+        db.refresh(booking)
+        
+    return {
+        "filename": saved_filenames[0] if saved_filenames else None,
+        "filenames": saved_filenames,
+        "status": "success"
+    }
 
 # === Chat Messaging Routes ===
 
@@ -587,13 +666,34 @@ def get_admin_stats(admin_id: int = Depends(get_current_admin_id), db: Session =
         count = db.query(Booking).filter(Booking.service_category == cat.name).count()
         category_breakdown.append(schemas.CategoryCount(name=cat.name, count=count))
         
+    # Dispatch system specific metrics
+    total_requested = db.query(Booking).filter(Booking.status == "requested").count()
+    total_assigned = db.query(Booking).filter(Booking.status.in_(["accepted", "on_the_way", "in_progress", "completed"])).count()
+    total_cancelled = db.query(Booking).filter(Booking.status == "cancelled").count()
+    
+    # Calculate average assignment time
+    assigned_bookings = db.query(Booking).filter(
+        Booking.accepted_at.isnot(None),
+        Booking.created_at.isnot(None)
+    ).all()
+    
+    if assigned_bookings:
+        total_time = sum((b.accepted_at - b.created_at).total_seconds() for b in assigned_bookings)
+        avg_assignment_time = total_time / len(assigned_bookings)
+    else:
+        avg_assignment_time = 0.0
+        
     return schemas.AdminStatsResponse(
         total_bookings=total_bookings,
         total_customers=total_customers,
         total_partners_online=total_partners_online,
         total_partners_offline=total_partners_offline,
         total_revenue=total_revenue,
-        category_breakdown=category_breakdown
+        category_breakdown=category_breakdown,
+        total_requested_bookings=total_requested,
+        total_assigned_bookings=total_assigned,
+        total_cancelled_bookings=total_cancelled,
+        average_assignment_time_seconds=avg_assignment_time
     )
 
 @app.get("/api/admin/users", response_model=List[schemas.UserResponse])

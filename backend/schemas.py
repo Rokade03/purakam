@@ -73,6 +73,7 @@ class BookingCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     partner_id: Optional[int] = None
+    area_name: Optional[str] = None
 
 class ReviewCreate(BaseModel):
     booking_id: int
@@ -106,6 +107,8 @@ class BookingResponse(BaseModel):
     otp: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    area_name: Optional[str] = None
+    accepted_at: Optional[datetime] = None
     created_at: datetime
     
     # Optionally embed customer and partner user details
@@ -141,6 +144,10 @@ class AdminStatsResponse(BaseModel):
     total_partners_offline: int
     total_revenue: float
     category_breakdown: List[CategoryCount]
+    total_requested_bookings: Optional[int] = 0
+    total_assigned_bookings: Optional[int] = 0
+    total_cancelled_bookings: Optional[int] = 0
+    average_assignment_time_seconds: Optional[float] = 0.0
 
 class ServiceCategoryCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=50)

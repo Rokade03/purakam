@@ -64,6 +64,44 @@
             </div>
         </div>
 
+        <!-- Dispatch System Metrics Row -->
+        <div class="dashboard-grid" style="margin-top: 1.5rem;">
+            <div class="dashboard-stat-card">
+                <div class="stat-icon warning"><i data-lucide="radio" class="pulse"></i></div>
+                <div class="stat-data">
+                    <h3>{{ stats.total_requested_bookings or 0 }}</h3>
+                    <p>Broadcasting Requests</p>
+                </div>
+            </div>
+            <div class="dashboard-stat-card">
+                <div class="stat-icon"><i data-lucide="pocket-knife"></i></div>
+                <div class="stat-data">
+                    <h3>{{ stats.total_assigned_bookings or 0 }}</h3>
+                    <p>Assigned Jobs</p>
+                </div>
+            </div>
+            <div class="dashboard-stat-card">
+                <div class="stat-icon danger"><i data-lucide="x-circle"></i></div>
+                <div class="stat-data">
+                    <h3>{{ stats.total_cancelled_bookings or 0 }}</h3>
+                    <p>Expired / Cancelled</p>
+                </div>
+            </div>
+            <div class="dashboard-stat-card">
+                <div class="stat-icon success"><i data-lucide="clock"></i></div>
+                <div class="stat-data">
+                    <h3>
+                        {% if stats.average_assignment_time_seconds and stats.average_assignment_time_seconds >= 60 %}
+                            {{ (stats.average_assignment_time_seconds / 60) | round(1) }} mins
+                        {% else %}
+                            {{ (stats.average_assignment_time_seconds or 0) | round(1) }} secs
+                        {% endif %}
+                    </h3>
+                    <p>Avg Assignment Speed</p>
+                </div>
+            </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2.5rem; margin-top: 2rem;">
             <!-- SVG Financial Earnings Chart -->
             <div class="glass-card">
@@ -201,12 +239,14 @@
                             <td style="padding: 1rem; font-weight: 600; color: var(--text-primary);">₹{{ b.price | int }}</td>
                             <td style="padding: 1rem; text-align: center;">
                                 {% if b.attachment_path %}
-                                    <a href="{{ BACKEND_BASE_URL }}/uploads/{{ b.attachment_path }}" target="_blank" class="chat-launcher-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; margin-right: 0.3rem;">
-                                        <i data-lucide="image" style="width: 12px; height: 12px;"></i> View Media
-                                    </a>
+                                    {% for img in b.attachment_path.split(',') %}
+                                        <a href="{{ BACKEND_BASE_URL }}/uploads/{{ img }}" target="_blank" class="chat-launcher-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; margin-right: 0.3rem; margin-bottom: 0.2rem; display: inline-flex; align-items: center; gap: 0.2rem;">
+                                            <i data-lucide="image" style="width: 12px; height: 12px;"></i> Media {{ loop.index }}
+                                        </a>
+                                    {% endfor %}
                                 {% endif %}
                                 {% if b.partner %}
-                                    <button class="chat-launcher-btn" onclick="openChatDrawer({{ b.id }}, 'Admin Monitor - Room #{{ b.id }}')" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">
+                                    <button class="chat-launcher-btn" onclick="openChatDrawer({{ b.id }}, 'Admin Monitor - Room #{{ b.id }}')" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.2rem;">
                                         <i data-lucide="message-square" style="width: 12px; height: 12px;"></i> Inspect Chat
                                     </button>
                                 {% else %}

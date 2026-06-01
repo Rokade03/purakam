@@ -125,6 +125,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast("Please enter a valid detailed address (min 10 characters).", "warning");
                 return;
             }
+
+            const areaName = document.getElementById("area_name").value;
+            if (!areaName) {
+                showToast("Please select a service area/city to proceed.", "warning");
+                return;
+            }
             
             // Populate invoice breakdown in Step 3
             const categoryName = document.getElementById("category_name").value;
@@ -208,8 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const coords = await getGeoCoordinates();
-            const partnerIdInput = document.getElementById("partner_id");
-            const partnerId = partnerIdInput && partnerIdInput.value ? parseInt(partnerIdInput.value) : null;
 
             const payload = {
                 service_category: document.getElementById("category_name").value,
@@ -221,7 +225,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 payment_method: method,
                 latitude: coords.latitude,
                 longitude: coords.longitude,
-                partner_id: partnerId
+                partner_id: null,
+                area_name: document.getElementById("area_name").value
             };
 
             try {
@@ -230,15 +235,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     body: JSON.stringify(payload)
                 });
                 
-                // If attachment is uploaded, send file multipart post
-                const fileInput = document.getElementById("job_attachment");
+                // If attachments are uploaded, send files multipart post
+                const fileInput = document.getElementById("job_attachments");
                 if (fileInput && fileInput.files.length > 0) {
-                    const file = fileInput.files[0];
                     const formData = new FormData();
-                    formData.append("file", file);
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        formData.append("files", fileInput.files[i]);
+                    }
                     
                     btnSubmit.disabled = true;
-                    btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Uploading attachment...`;
+                    btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Uploading attachments...`;
                     if (window.lucide) lucide.createIcons();
                     
                     const uploadHeaders = {};
@@ -303,6 +309,35 @@ async function acceptJob(bookingId) {
         setTimeout(() => window.location.reload(), 1000);
     } catch (err) {
         console.error("Job acceptance error:", err);
+        // Reload after a short delay so the feed is refreshed and the contested/expired job is removed
+        setTimeout(() => window.location.reload(), 2000);
+    }
+}
+
+async function declineJob(bookingId) {
+    try {
+        await apiRequest(`/bookings/${bookingId}/decline`, {
+            method: "POST"
+        });
+        showToast("Job request declined.", "warning");
+        const card = document.getElementById(`incoming-job-card-${bookingId}`);
+        if (card) {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            card.style.transition = 'all 0.3s ease';
+            setTimeout(() => {
+                card.remove();
+                // Check if any other jobs are left, if not show the empty state
+                const remaining = document.querySelectorAll('[id^="incoming-job-card-"]');
+                if (remaining.length === 0) {
+                    window.location.reload();
+                }
+            }, 300);
+        } else {
+            window.location.reload();
+        }
+    } catch (err) {
+        console.error("Job decline error:", err);
     }
 }
 
@@ -687,6 +722,25 @@ document.addEventListener("DOMContentLoaded", () => {
             
             revealElements.forEach(el => observer.observe(el));
         }
+    }
+});
+
+// 7. Auto-reload polling for customer dashboard when a booking is broadcasting
+document.addEventListener("DOMContentLoaded", () => {
+    if (document.querySelector(".badge-requested")) {
+        const intervalId = setInterval(async () => {
+            try {
+                const bookings = await apiRequest("/bookings");
+                const requestedCountInBackend = bookings.filter(b => b.status === "requested").length;
+                const requestedCountInDom = document.querySelectorAll(".badge-requested").length;
+                if (requestedCountInBackend !== requestedCountInDom) {
+                    clearInterval(intervalId);
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 6000);
     }
 });
 

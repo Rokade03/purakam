@@ -5,7 +5,7 @@ def seed_db():
     print("Initializing database tables...")
     Base.metadata.create_all(bind=engine)
     
-    # Run automatic schema migration to ensure 'otp' column exists (important for persistent Render DB)
+    # Run automatic schema migration to ensure 'otp', 'area_name', and 'accepted_at' columns exist
     inspector = inspect(engine)
     if inspector.has_table('bookings'):
         columns = [col['name'] for col in inspector.get_columns('bookings')]
@@ -14,6 +14,16 @@ def seed_db():
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE bookings ADD COLUMN otp VARCHAR(255);"))
             print("Migration: 'otp' column added successfully.")
+        if 'area_name' not in columns:
+            print("Migration: Adding missing 'area_name' column to bookings table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN area_name VARCHAR(255);"))
+            print("Migration: 'area_name' column added successfully.")
+        if 'accepted_at' not in columns:
+            print("Migration: Adding missing 'accepted_at' column to bookings table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN accepted_at DATETIME;"))
+            print("Migration: 'accepted_at' column added successfully.")
     
     db = SessionLocal()
     try:
