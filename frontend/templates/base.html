@@ -27,7 +27,11 @@
                 <span>Purakam</span>
             </a>
             
-            <nav class="nav-links">
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle Menu">
+                <i data-lucide="menu"></i>
+            </button>
+            
+            <nav class="nav-links" id="nav-links">
                 {% if session.get('user_role') != 'partner' %}
                     <a href="{{ url_for('services') }}" class="nav-link"><i data-lucide="search"></i> Find Services</a>
                 {% endif %}

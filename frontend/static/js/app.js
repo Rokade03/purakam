@@ -888,3 +888,23 @@ window.closeTrackingModal = function() {
     }
 };
 
+// Mobile menu toggle logic
+document.addEventListener("DOMContentLoaded", () => {
+    const menuToggle = document.getElementById("mobile-menu-toggle");
+    const navLinks = document.getElementById("nav-links");
+    if (menuToggle && navLinks) {
+        menuToggle.addEventListener("click", () => {
+            navLinks.classList.toggle("active");
+            if (navLinks.classList.contains("active")) {
+                menuToggle.innerHTML = '<i data-lucide="x"></i>';
+            } else {
+                menuToggle.innerHTML = '<i data-lucide="menu"></i>';
+            }
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        });
+    }
+});
+
+

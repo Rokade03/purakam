@@ -2086,5 +2086,230 @@ input:checked + .slider:before {
     font-size: 0.85rem;
 }
 
+/* ==================================================
+   MOBILE & TABLET RESPONSIVENESS UPDATES
+   ================================================== */
+
+/* Hide mobile toggle by default on desktop */
+.mobile-menu-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    /* 1. Global Navigation Bar Collapse & Menu Trigger */
+    .mobile-menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 110;
+        transition: var(--transition-fast);
+    }
+    
+    .mobile-menu-toggle i {
+        width: 22px;
+        height: 22px;
+    }
+    
+    .nav-links {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--bg-glass);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-bottom: 1px solid var(--border-glass);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1.5rem 2rem;
+        gap: 1rem;
+        display: none; /* Managed by JS class toggle */
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+        z-index: 99;
+    }
+    
+    .nav-links.active {
+        display: flex;
+    }
+    
+    .nav-link {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        box-sizing: border-box;
+    }
+    
+    .user-pill {
+        width: 100%;
+        justify-content: center;
+        padding: 0.6rem 1rem;
+        box-sizing: border-box;
+    }
+    
+    .nav-links .btn-primary {
+        width: 100%;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    /* 2. Global wrapper / Glass Card adjustments */
+    .main-wrapper {
+        padding: 1.5rem 1rem;
+    }
+    
+    .glass-card {
+        padding: 1.5rem 1.2rem;
+        border-radius: var(--border-radius-sm);
+    }
+    
+    /* 3. Services Search Layout & Partner Cards */
+    .services-layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .filter-sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border-glass);
+        padding-bottom: 1.5rem;
+    }
+    
+    .partner-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 1.5rem;
+        padding: 1.2rem;
+    }
+    
+    .partner-avatar {
+        margin: 0 auto;
+    }
+    
+    .partner-info h3 {
+        justify-content: center;
+    }
+    
+    .partner-details {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    
+    .partner-actions {
+        align-items: center;
+        text-align: center;
+    }
+    
+    /* 4. Booking Card Body & Lifecycle Timeline */
+    .booking-body {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        padding: 1.2rem;
+    }
+    
+    .booking-body > div:last-child {
+        align-items: flex-start !important;
+        text-align: left !important;
+    }
+    
+    /* Vertical timeline for booking progress on mobile */
+    .booking-lifecycle {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.5rem;
+        padding: 1.2rem;
+    }
+    
+    .lifecycle-step {
+        flex-direction: row;
+        align-items: center;
+        gap: 1rem;
+        color: var(--text-muted);
+        text-align: left;
+        position: relative;
+    }
+    
+    .lifecycle-step::after {
+        left: 9px;
+        top: 18px;
+        bottom: -23px;
+        right: auto;
+        width: 1px;
+        height: auto;
+    }
+    
+    .lifecycle-step:last-child::after {
+        display: none;
+    }
+    
+    .lifecycle-dot {
+        margin-bottom: 0;
+    }
+
+    /* 5. Partner & Admin Dashboard Layout Grid overrides */
+    .partner-container {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    /* Admin/Partner inline 2fr 1fr and 1.6fr 1fr grids */
+    div[style*="grid-template-columns: 2fr 1fr"],
+    div[style*="grid-template-columns: 1.6fr 1fr"] {
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem !important;
+    }
+    
+    /* Stacking active jobs details */
+    .partner-container .glass-card div[style*="display: flex; justify-content: space-between"],
+    .admin-tab-content div[style*="display: flex; justify-content: space-between"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 1.2rem !important;
+    }
+    
+    .partner-container .glass-card div[style*="align-items: flex-end"],
+    .admin-tab-content div[style*="align-items: flex-end"] {
+        align-items: flex-start !important;
+        text-align: left !important;
+    }
+    
+    /* Tab controls responsiveness */
+    div[style*="display: flex; gap: 1rem; border-bottom"] {
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        padding-bottom: 0.8rem !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    div[style*="display: flex; gap: 1rem; border-bottom"]::-webkit-scrollbar {
+        display: none;
+    }
+    
+    div[style*="display: flex; gap: 1rem; border-bottom"] button {
+        flex-shrink: 0;
+    }
+
+    /* 6. Form grids (Register, Booking, etc.) */
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-full {
+        grid-column: span 1;
+    }
+
+    /* 7. Chat Drawer responsiveness */
+    .chat-drawer {
+        width: 100vw;
+        right: -100vw;
+    }
+}
+
 
 
