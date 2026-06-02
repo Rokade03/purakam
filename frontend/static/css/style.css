@@ -1097,12 +1097,26 @@ textarea.form-input {
 
 .lifecycle-step.active {
     color: var(--text-primary);
+    font-weight: 600;
 }
 
 .lifecycle-step.active .lifecycle-dot {
-    border-color: var(--primary);
-    background: var(--primary);
+    border: 3px solid var(--primary);
+    background: var(--bg-main);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    animation: activeStepPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes activeStepPulse {
+    0% {
+        box-shadow: 0 0 0 0px rgba(0, 0, 0, 0.25);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(0, 0, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0px rgba(0, 0, 0, 0);
+    }
 }
 
 .lifecycle-step.completed {

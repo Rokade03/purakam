@@ -224,23 +224,23 @@
                 <!-- Horizontal progress lifecycle bar -->
                 {% if booking.status != 'cancelled' %}
                     <div class="booking-lifecycle">
-                        <div class="lifecycle-step {% if booking.status in ['requested', 'accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% endif %}">
+                        <div class="lifecycle-step {% if booking.status in ['accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'requested' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
                             <span>Requested</span>
                         </div>
-                        <div class="lifecycle-step {% if booking.status in ['accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'requested' %}active{% endif %}">
+                        <div class="lifecycle-step {% if booking.status in ['on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'accepted' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
                             <span>Accepted</span>
                         </div>
-                        <div class="lifecycle-step {% if booking.status in ['on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'accepted' %}active{% endif %}">
+                        <div class="lifecycle-step {% if booking.status in ['in_progress', 'completed'] %}completed{% elif booking.status == 'on_the_way' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
                             <span>En Route</span>
                         </div>
-                        <div class="lifecycle-step {% if booking.status in ['in_progress', 'completed'] %}completed{% elif booking.status == 'on_the_way' %}active{% endif %}">
+                        <div class="lifecycle-step {% if booking.status == 'completed' %}completed{% elif booking.status == 'in_progress' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
                             <span>Working</span>
                         </div>
-                        <div class="lifecycle-step {% if booking.status == 'completed' %}completed{% elif booking.status == 'in_progress' %}active{% endif %}">
+                        <div class="lifecycle-step {% if booking.status == 'completed' %}completed{% endif %}">
                             <div class="lifecycle-dot"></div>
                             <span>Completed</span>
                         </div>
