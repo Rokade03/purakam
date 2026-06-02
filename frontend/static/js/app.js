@@ -744,3 +744,147 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+// === Real-Time Location Tracking System ===
+let trackingMap = null;
+let trackingIntervalId = null;
+let customerMarker = null;
+let partnerMarker = null;
+let trackingPolyline = null;
+
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+window.openTrackingModal = function(bookingId, customerLat, customerLng, partnerName) {
+    document.getElementById('tracking-modal').style.display = 'flex';
+    document.getElementById('tracking-partner-name').innerText = partnerName;
+    document.getElementById('tracking-distance').innerText = "Locating partner...";
+    
+    // Clear any existing active tracking
+    if (trackingIntervalId) clearInterval(trackingIntervalId);
+    
+    // Ensure coordinates exist, fallback to Bandra if missing
+    const cLat = customerLat || 19.0600;
+    const cLng = customerLng || 72.8258;
+    
+    setTimeout(() => {
+        // Initialize Leaflet map
+        if (!trackingMap) {
+            trackingMap = L.map('tracking-map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([cLat, cLng], 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(trackingMap);
+        } else {
+            trackingMap.setView([cLat, cLng], 14);
+            // Remove previous map elements
+            if (customerMarker) trackingMap.removeLayer(customerMarker);
+            if (partnerMarker) trackingMap.removeLayer(partnerMarker);
+            if (trackingPolyline) trackingMap.removeLayer(trackingPolyline);
+            customerMarker = null;
+            partnerMarker = null;
+            trackingPolyline = null;
+        }
+        
+        // Define Custom HTML markers (glassmorphic style matching the app)
+        const customerIcon = L.divIcon({
+            className: 'custom-marker-customer',
+            html: `<div style="background-color: var(--success); width: 14px; height: 14px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px var(--success);"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+        
+        const partnerIcon = L.divIcon({
+            className: 'custom-marker-partner',
+            html: `<div style="background-color: var(--accent); width: 20px; height: 20px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 12px var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; color: white;">⚡</div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+        
+        customerMarker = L.marker([cLat, cLng], { icon: customerIcon }).addTo(trackingMap)
+            .bindPopup("Your Doorstep Location").openPopup();
+            
+        const pollLocation = async () => {
+            try {
+                const bookings = await apiRequest("/bookings");
+                const booking = bookings.find(b => b.id === bookingId);
+                if (!booking) return;
+                
+                const partner = booking.partner;
+                const status = booking.status;
+                
+                // Update Status UI
+                const statusEl = document.getElementById('tracking-status');
+                statusEl.className = `status-badge badge-${status}`;
+                statusEl.innerText = status.replace('_', ' ');
+                
+                if (partner && partner.latitude !== null && partner.longitude !== null) {
+                    const pLat = partner.latitude;
+                    const pLng = partner.longitude;
+                    
+                    if (partnerMarker) {
+                        partnerMarker.setLatLng([pLat, pLng]);
+                    } else {
+                        partnerMarker = L.marker([pLat, pLng], { icon: partnerIcon }).addTo(trackingMap)
+                            .bindPopup(`${partner.name} (Technician)`).openPopup();
+                    }
+                    
+                    // Draw or Update Route Polyline
+                    const route = [[cLat, cLng], [pLat, pLng]];
+                    if (trackingPolyline) {
+                        trackingPolyline.setLatLngs(route);
+                    } else {
+                        trackingPolyline = L.polyline(route, {
+                            color: 'var(--accent)',
+                            dashArray: '5, 10',
+                            weight: 3
+                        }).addTo(trackingMap);
+                    }
+                    
+                    // Calculate and render distance
+                    const dist = getHaversineDistance(cLat, cLng, pLat, pLng);
+                    const distText = dist < 1.0 ? `${Math.round(dist * 1000)} meters` : `${dist.toFixed(2)} km`;
+                    document.getElementById('tracking-distance').innerText = distText;
+                    
+                    // Auto bounds zoom
+                    const group = new L.featureGroup([customerMarker, partnerMarker]);
+                    trackingMap.fitBounds(group.getBounds().pad(0.2));
+                } else {
+                    document.getElementById('tracking-distance').innerText = "Locating partner...";
+                    trackingMap.setView([cLat, cLng], 14);
+                }
+                
+                // If job completed or cancelled, auto close modal and reload
+                if (status === 'completed' || status === 'cancelled') {
+                    closeTrackingModal();
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error("Location polling error:", err);
+            }
+        };
+        
+        pollLocation();
+        trackingIntervalId = setInterval(pollLocation, 5000);
+    }, 100);
+};
+
+window.closeTrackingModal = function() {
+    document.getElementById('tracking-modal').style.display = 'none';
+    if (trackingIntervalId) {
+        clearInterval(trackingIntervalId);
+        trackingIntervalId = null;
+    }
+};
+

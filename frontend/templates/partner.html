@@ -242,4 +242,59 @@
         </aside>
     </div>
 </div>
+
+<script>
+    // Start background location updates if partner has active assigned jobs
+    document.addEventListener("DOMContentLoaded", () => {
+        const hasActiveJobs = {{ 'true' if active_jobs.has else 'false' }};
+        if (hasActiveJobs) {
+            console.log("Active jobs found. Starting background location reporting...");
+            
+            const reportLocation = () => {
+                if (!navigator.geolocation) {
+                    console.log("Geolocation not supported by this browser.");
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const payload = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                        try {
+                            const response = await fetch(`${window.BACKEND_API_URL}/partner/location`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${window.userSession.authToken}`
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                            if (!response.ok) {
+                                console.error("Failed to report location:", response.statusText);
+                            } else {
+                                console.log("Location reported successfully:", payload);
+                            }
+                        } catch (err) {
+                            console.error("Error reporting location:", err);
+                        }
+                    },
+                    (error) => {
+                        console.error("Error getting location for reporting:", error);
+                    },
+                    { timeout: 8000 }
+                );
+            };
+            
+            // Report immediately and then every 8 seconds
+            reportLocation();
+            const locationInterval = setInterval(reportLocation, 8000);
+            
+            // Clean up interval if needed
+            window.addEventListener("beforeunload", () => {
+                clearInterval(locationInterval);
+            });
+        }
+    });
+</script>
 {% endblock %}

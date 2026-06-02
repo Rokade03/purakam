@@ -42,6 +42,10 @@ class PartnerProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PartnerLocationUpdate(BaseModel):
+    latitude: float
+    longitude: float
+
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -52,6 +56,8 @@ class UserResponse(BaseModel):
     created_at: datetime
     partner_profile: Optional[PartnerProfileResponse] = None
     access_token: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
     class Config:
         from_attributes = True

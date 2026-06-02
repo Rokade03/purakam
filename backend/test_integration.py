@@ -370,6 +370,28 @@ def run_tests():
     finally:
         db.close()
 
+    # 16. Testing Real-Time Location Tracking API
+    print("\n16. Testing Real-Time Location Tracking API endpoints...")
+    # Partner updates location coordinates
+    loc_payload = {
+        "latitude": 19.0620,
+        "longitude": 72.8280
+    }
+    r = requests.put(f"{API_URL}/partner/location", json=loc_payload, headers=part_headers)
+    assert r.status_code == 200, f"Failed to update partner location: {r.text}"
+    print("Partner coordinates successfully updated in backend.")
+
+    # Customer fetches bookings list to check partner location coordinates
+    r = requests.get(f"{API_URL}/bookings", headers=cust_headers)
+    assert r.status_code == 200
+    cust_bookings = r.json()
+    pune_booking = next((b for b in cust_bookings if b["id"] == pune_booking_id), None)
+    assert pune_booking is not None
+    assert pune_booking["partner"] is not None
+    assert pune_booking["partner"]["latitude"] == 19.0620
+    assert pune_booking["partner"]["longitude"] == 72.8280
+    print("Verification passed: Customer successfully tracked partner's live coordinates!")
+
     # Security Verification: Customer cannot access admin routes
     print("\nSecurity: Verifying customer role cannot access admin routes...")
     r = requests.get(f"{API_URL}/admin/stats", headers=cust_headers)

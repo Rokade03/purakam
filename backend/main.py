@@ -279,6 +279,23 @@ def update_partner_profile(
     db.refresh(profile)
     return profile
 
+@app.put("/api/partner/location")
+def update_partner_location(
+    loc_data: schemas.PartnerLocationUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or user.role != "partner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only service partners can update location"
+        )
+    user.latitude = loc_data.latitude
+    user.longitude = loc_data.longitude
+    db.commit()
+    return {"message": "Location updated successfully"}
+
 DISPATCH_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_TIMEOUT_SECONDS", "600"))
 
 def check_and_expire_bookings(db: Session):
