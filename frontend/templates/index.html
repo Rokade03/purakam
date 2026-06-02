@@ -3,13 +3,21 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero-section fade-in">
-    <h1>Electrical Doorstep Services <br><span class="gradient-text">Simple & Professional</span></h1>
-    <p>Get highly-rated certified electricians, appliance technicians, and power backup experts at your home in minutes.</p>
-    
-    <!-- Dynamic Search -->
-    <div class="search-container">
-        <i data-lucide="search" class="search-icon"></i>
-        <input type="text" id="home-search-input" class="search-input" placeholder="Search for Electrician, Switchboard, Inverter..." onkeyup="filterHomeCategories()">
+    <div class="hero-content">
+        <h1>Electrical Doorstep Services <br><span class="gradient-text">Simple & Professional</span></h1>
+        <p>Get highly-rated certified electricians, appliance technicians, and power backup experts at your home in minutes.</p>
+        
+        <!-- Dynamic Search -->
+        <div class="search-container">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="home-search-input" class="search-input" placeholder="Search for Electrician, Switchboard, Inverter..." onkeyup="filterHomeCategories()">
+        </div>
+    </div>
+    <div class="hero-visual">
+        <div class="hero-image-wrapper">
+            <img src="{{ url_for('static', filename='images/hero_electrician.png') }}" alt="Professional Electrician" class="hero-image" fetchpriority="high">
+            <div class="hero-image-overlay"></div>
+        </div>
     </div>
 </section>
 
@@ -32,6 +40,26 @@
                 <p>No service categories seeded yet. Make sure backend and migrations are complete.</p>
             </div>
         {% endfor %}
+    </div>
+</section>
+
+<!-- Promo Banner Section -->
+<section class="promo-banner-section fade-in scroll-reveal">
+    <div class="promo-banner-card glass-card">
+        <div class="promo-image-side">
+            <img src="{{ url_for('static', filename='images/ac_repair.png') }}" alt="Air Conditioning and Appliance Care" class="promo-image" loading="lazy">
+        </div>
+        <div class="promo-content-side">
+            <span class="promo-tag">Mumbai Exclusive</span>
+            <h2>AC & Major Appliance Diagnostics</h2>
+            <p>Don't let the heat get to you. Book our certified experts for rapid cooling repair, compressor diagnostics, gas refilling, and switchboard safety checks.</p>
+            <ul class="promo-features-list">
+                <li><i data-lucide="check-circle" style="color: var(--primary);"></i> 100% Verified Electricians & Technicians</li>
+                <li><i data-lucide="check-circle" style="color: var(--primary);"></i> Mumbai Municipal & Suburbs Coverage</li>
+                <li><i data-lucide="check-circle" style="color: var(--primary);"></i> Fixed base rates with no hidden fees</li>
+            </ul>
+            <a href="{{ url_for('services', category='AC & Appliance Repair') }}" class="btn-primary">Book Repair Service <i data-lucide="arrow-right"></i></a>
+        </div>
     </div>
 </section>
 

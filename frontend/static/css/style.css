@@ -336,14 +336,21 @@ h1, h2, h3, h4, h5, h6 {
    LANDING / HOME PAGE & MOTION EFFECTS
    ================================================== */
 .hero-section {
-    text-align: center;
-    padding: 6rem 1rem 5rem 1rem;
-    max-width: 800px;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 3.5rem;
+    align-items: center;
+    padding: 4rem 1rem 6rem 1rem;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
+.hero-content {
+    text-align: left;
+}
+
 .hero-section h1 {
-    font-size: 3.8rem;
+    font-size: 3.5rem;
     line-height: 1.15;
     margin-bottom: 1.5rem;
     letter-spacing: -0.04em;
@@ -351,9 +358,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero-section p {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     color: var(--text-secondary);
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
     animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -372,10 +379,170 @@ h1, h2, h3, h4, h5, h6 {
 /* Interactive Search Bar */
 .search-container {
     display: flex;
-    max-width: 580px;
-    margin: 0 auto 3rem auto;
+    max-width: 100%;
+    margin: 0 0 2rem 0;
     position: relative;
     animation: slideUpFade 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-visual {
+    position: relative;
+    animation: slideUpFade 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-image-wrapper {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-glass);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.05);
+    transition: var(--transition-slow);
+}
+
+.hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    aspect-ratio: 1.1 / 1;
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-image-wrapper:hover .hero-image {
+    transform: scale(1.03);
+}
+
+.hero-image-wrapper:hover {
+    border-color: var(--border-active);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.08);
+}
+
+/* Promo Split Banner Section */
+.promo-banner-section {
+    margin-bottom: 5rem;
+}
+
+.promo-banner-card {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 3rem;
+    align-items: center;
+    padding: 0;
+    overflow: hidden;
+}
+
+.promo-image-side {
+    position: relative;
+    height: 100%;
+    min-height: 400px;
+}
+
+.promo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.promo-banner-card:hover .promo-image {
+    transform: scale(1.02);
+}
+
+.promo-content-side {
+    padding: 3.5rem;
+    text-align: left;
+}
+
+.promo-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.3rem 0.8rem;
+    border-radius: 50px;
+    margin-bottom: 1.2rem;
+    color: var(--text-primary);
+}
+
+.promo-content-side h2 {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.promo-content-side p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 1.8rem;
+    line-height: 1.6;
+}
+
+.promo-features-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.promo-features-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.promo-features-list li i {
+    width: 16px;
+    height: 16px;
+}
+
+/* Responsive updates for home page */
+@media (max-width: 992px) {
+    .hero-section {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 2.5rem;
+        padding: 3rem 1rem;
+    }
+    
+    .hero-content {
+        text-align: center;
+    }
+    
+    .search-container {
+        margin: 0 auto;
+        max-width: 580px;
+    }
+    
+    .hero-image {
+        max-width: 500px;
+        margin: 0 auto;
+        aspect-ratio: 1.2 / 1;
+    }
+    
+    .promo-banner-card {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    .promo-image-side {
+        min-height: 300px;
+        order: 2;
+    }
+    
+    .promo-content-side {
+        padding: 2.5rem 1.8rem;
+        order: 1;
+    }
 }
 
 .search-input {
