@@ -54,6 +54,8 @@ class PartnerProfile(Base):
     availability_status = Column(Boolean, default=False)  # True = Active/Online, False = Offline
     bio = Column(Text, nullable=True)
     completed_jobs = Column(Integer, default=0)
+    aadhar_card = Column(String, nullable=True)
+    pan_card = Column(String, nullable=True)
 
     # Relationship
     user = relationship("User", back_populates="partner_profile")

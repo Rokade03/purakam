@@ -18,6 +18,8 @@ class UserCreate(BaseModel):
     service_category: Optional[str] = None
     hourly_rate: Optional[float] = None
     bio: Optional[str] = None
+    aadhar_card: Optional[str] = None
+    pan_card: Optional[str] = None
 
 class PartnerProfileUpdate(BaseModel):
     service_category: Optional[str] = None
@@ -34,6 +36,8 @@ class PartnerProfileResponse(BaseModel):
     availability_status: bool
     bio: Optional[str] = None
     completed_jobs: int
+    aadhar_card: Optional[str] = None
+    pan_card: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -175,8 +175,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const getGeoCoordinates = () => {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
-                    console.log("Geolocation not supported. Using default Koregaon Park coordinates.");
-                    resolve({ latitude: 18.5362, longitude: 73.8940 });
+                    console.log("Geolocation not supported. Using default Bandra, Mumbai coordinates.");
+                    resolve({ latitude: 19.0600, longitude: 72.8258 });
                     return;
                 }
                 navigator.geolocation.getCurrentPosition(
@@ -187,8 +187,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         });
                     },
                     (error) => {
-                        console.log("Geolocation error or permission denied. Using default Koregaon Park coordinates.", error);
-                        resolve({ latitude: 18.5362, longitude: 73.8940 });
+                        console.log("Geolocation error or permission denied. Using default Bandra, Mumbai coordinates.", error);
+                        resolve({ latitude: 19.0600, longitude: 72.8258 });
                     },
                     { timeout: 5000 }
                 );

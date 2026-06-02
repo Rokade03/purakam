@@ -31,8 +31,8 @@
             </div>
 
             <div class="form-group">
-                <label for="address">Full Address / Location (India)</label>
-                <input type="text" id="address" name="address" class="form-input" placeholder="Flat No., Apt, Street, Locality, City" required>
+                <label for="address">Full Address / Location (Mumbai Only)</label>
+                <input type="text" id="address" name="address" class="form-input" placeholder="Flat No., Street, Locality, Mumbai/Thane/Navi Mumbai" required>
             </div>
 
             <!-- Role Selection -->
@@ -73,6 +73,17 @@
                     <label for="bio">Professional Summary / Bio</label>
                     <textarea id="bio" name="bio" class="form-input" placeholder="Briefly describe your skill, experience, and tools..." style="height: 80px; resize: none;"></textarea>
                 </div>
+
+                <div class="form-grid" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label for="aadhar_card">Aadhar Card Number (12 Digits)</label>
+                        <input type="text" id="aadhar_card" name="aadhar_card" class="form-input" placeholder="123456789012" maxlength="12" pattern="\d{12}" title="Aadhar card must be a 12-digit numeric code">
+                    </div>
+                    <div class="form-group">
+                        <label for="pan_card">PAN Card Number (10 Characters)</label>
+                        <input type="text" id="pan_card" name="pan_card" class="form-input" placeholder="ABCDE1234F" maxlength="10" style="text-transform: uppercase;" pattern="[A-Z0-9]{10}" title="PAN card must be a 10-character alphanumeric code">
+                    </div>
+                </div>
             </div>
 
             <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1.5rem;">
@@ -91,15 +102,21 @@
         const fields = document.getElementById("partner-specific-fields");
         const categoryField = document.getElementById("service_category");
         const rateField = document.getElementById("hourly_rate");
+        const aadharField = document.getElementById("aadhar_card");
+        const panField = document.getElementById("pan_card");
 
         if (show) {
             fields.style.display = "block";
             categoryField.setAttribute("required", "required");
             rateField.setAttribute("required", "required");
+            aadharField.setAttribute("required", "required");
+            panField.setAttribute("required", "required");
         } else {
             fields.style.display = "none";
             categoryField.removeAttribute("required");
             rateField.removeAttribute("required");
+            aadharField.removeAttribute("required");
+            panField.removeAttribute("required");
         }
     }
 </script>

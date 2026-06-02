@@ -261,6 +261,8 @@ def register():
             payload["service_category"] = request.form.get("service_category")
             payload["hourly_rate"] = float(request.form.get("hourly_rate", 250))
             payload["bio"] = request.form.get("bio", "")
+            payload["aadhar_card"] = request.form.get("aadhar_card")
+            payload["pan_card"] = request.form.get("pan_card")
             
         try:
             r = requests.post(f"{BACKEND_API_URL}/auth/register", json=payload)

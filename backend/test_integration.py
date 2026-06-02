@@ -8,6 +8,58 @@ API_URL = "http://127.0.0.1:8000/api"
 def run_tests():
     print("=== STARTING INTEGRATION TESTS ===")
     
+    # 0. Test Mumbai address restriction and Aadhaar/PAN validations
+    print("\n0. Testing address and document registration restrictions...")
+    # Pune address registration attempt
+    pune_register_payload = {
+        "name": "Pune User",
+        "email": "pune_user@purakam.in",
+        "password": "password123",
+        "phone": "+919900000000",
+        "address": "123, Deccan Gymkhana, Pune, MH",
+        "role": "customer"
+    }
+    r = requests.post(f"{API_URL}/auth/register", json=pune_register_payload)
+    assert r.status_code == 400, f"Expected 400 for Pune address, got {r.status_code}: {r.text}"
+    assert "restricted to Mumbai" in r.text, f"Expected restriction message, got: {r.text}"
+    print("Address restriction check passed (Pune address successfully blocked).")
+
+    # Missing Aadhaar/PAN partner registration attempt
+    missing_docs_payload = {
+        "name": "No Docs Partner",
+        "email": "nodocs@purakam.in",
+        "password": "password123",
+        "phone": "+919900000003",
+        "address": "Bandra, Mumbai, MH",
+        "role": "partner",
+        "service_category": "Electrician",
+        "hourly_rate": 300.0,
+        "bio": "Certified test electrician."
+    }
+    r = requests.post(f"{API_URL}/auth/register", json=missing_docs_payload)
+    assert r.status_code == 400, f"Expected 400 for missing docs, got {r.status_code}"
+    assert "Aadhar card number and PAN card number are required" in r.text
+    print("Document presence check passed (Partner without docs successfully blocked).")
+
+    # Invalid Aadhaar partner registration attempt
+    invalid_aadhar_payload = {
+        "name": "Bad Aadhaar Partner",
+        "email": "badaadhar@purakam.in",
+        "password": "password123",
+        "phone": "+919900000004",
+        "address": "Bandra, Mumbai, MH",
+        "role": "partner",
+        "service_category": "Electrician",
+        "hourly_rate": 300.0,
+        "bio": "Certified test electrician.",
+        "aadhar_card": "12345", # Less than 12 digits
+        "pan_card": "PANTST1234"
+    }
+    r = requests.post(f"{API_URL}/auth/register", json=invalid_aadhar_payload)
+    assert r.status_code == 400, f"Expected 400 for invalid Aadhaar, got {r.status_code}"
+    assert "Aadhar card must be a 12-digit numeric code" in r.text
+    print("Aadhaar validation check passed (Partner with invalid Aadhaar successfully blocked).")
+
     # 1. Register test customer
     print("\n1. Registering test customer...")
     cust_payload = {
@@ -15,7 +67,7 @@ def run_tests():
         "email": "test_customer@purakam.in",
         "password": "password123",
         "phone": "+919900000001",
-        "address": "123, Testing Boulevard, Pune, MH",
+        "address": "123, User Colony, Bandra West, Mumbai, MH",
         "role": "customer"
     }
     r = requests.post(f"{API_URL}/auth/register", json=cust_payload)
@@ -34,11 +86,13 @@ def run_tests():
         "email": "test_partner@purakam.in",
         "password": "password123",
         "phone": "+919900000002",
-        "address": "456, Skill Road, Pune, MH",
+        "address": "456, Bandra Reclamation, Mumbai, MH",
         "role": "partner",
         "service_category": "Electrician",
         "hourly_rate": 300.0,
-        "bio": "Certified test electrician."
+        "bio": "Certified test electrician.",
+        "aadhar_card": "999900001111",
+        "pan_card": "PANTST1234"
     }
     r = requests.post(f"{API_URL}/auth/register", json=part_payload)
     if r.status_code == 200:
@@ -88,20 +142,20 @@ def run_tests():
     assert r.json()["availability_status"] is True
     print("Partner status updated to: ONLINE")
 
-    # 5. Place booking as customer with Pune coordinates (Geographic Proximity Test)
-    # Booking at Koregaon Park, Pune should match Vijay Shinde and Test Electrician (both Pune-based).
-    print("\n5. Placing booking with Pune coordinates (Koregaon Park)...")
+    # 5. Place booking as customer with Mumbai coordinates (Geographic Proximity Test)
+    # Booking at Bandra, Mumbai should match Vijay Shinde and Test Electrician (both Mumbai-based).
+    print("\n5. Placing booking with Mumbai coordinates (Bandra)...")
     booking_payload_pune = {
         "service_category": "Electrician",
         "booking_date": "2026-06-01",
         "time_slot": "10:00 AM - 12:00 PM",
         "details": "Install living room lights.",
         "price": 349.0,
-        "address": "Marvel Crest, Koregaon Park, Pune",
+        "address": "Sea Breeze Apts, Bandra West, Mumbai, MH",
         "payment_method": "UPI",
-        "latitude": 18.5362,
-        "longitude": 73.8940,
-        "area_name": "Pune"
+        "latitude": 19.0600,
+        "longitude": 72.8258,
+        "area_name": "Bandra & Western Suburbs"
     }
     r = requests.post(f"{API_URL}/bookings", json=booking_payload_pune, headers=cust_headers)
     assert r.status_code == 200, f"Failed to place Pune booking: {r.text}"
@@ -281,10 +335,11 @@ def run_tests():
         "time_slot": "12:00 PM - 02:00 PM",
         "details": "Checking expiration.",
         "price": 199.0,
-        "address": "Testing Expiration Address, Pune",
+        "address": "Testing Expiration Address, Bandra, Mumbai, MH",
         "payment_method": "COD",
-        "latitude": 18.5362,
-        "longitude": 73.8940
+        "latitude": 19.0600,
+        "longitude": 72.8258,
+        "area_name": "Bandra & Western Suburbs"
     }
     r = requests.post(f"{API_URL}/bookings", json=booking_payload_expire, headers=cust_headers)
     assert r.status_code == 200, f"Failed to place booking: {r.text}"

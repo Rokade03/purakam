@@ -139,6 +139,19 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
+    # Validate address is within Mumbai MMR region
+    if not user_data.address or not user_data.address.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Address is required"
+        )
+    address_lower = user_data.address.lower()
+    if not any(city in address_lower for city in ["mumbai", "thane", "navi mumbai"]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registrations are restricted to Mumbai and its metropolitan areas (Thane, Navi Mumbai)."
+        )
+
     # Create new User
     new_user = User(
         name=user_data.name,
@@ -162,13 +175,41 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Service category and hourly rate required for partner role"
             )
+            
+        if not user_data.aadhar_card or not user_data.pan_card:
+            db.delete(new_user)
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Aadhar card number and PAN card number are required for service partners"
+            )
+            
+        aadhar_stripped = user_data.aadhar_card.replace(" ", "").replace("-", "")
+        if len(aadhar_stripped) != 12 or not aadhar_stripped.isdigit():
+            db.delete(new_user)
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Aadhar card must be a 12-digit numeric code"
+            )
+            
+        pan_upper = user_data.pan_card.upper().strip()
+        if len(pan_upper) != 10 or not pan_upper.isalnum():
+            db.delete(new_user)
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PAN card must be a 10-character alphanumeric code"
+            )
         
         new_partner = PartnerProfile(
             user_id=new_user.id,
             service_category=user_data.service_category,
             hourly_rate=user_data.hourly_rate,
             bio=user_data.bio or f"Professional {user_data.service_category} in the local area.",
-            availability_status=False  # Starts offline
+            availability_status=False,  # Starts offline
+            aadhar_card=aadhar_stripped,
+            pan_card=pan_upper
         )
         db.add(new_partner)
         db.commit()
@@ -260,6 +301,31 @@ def create_booking(
     customer_id: int = Depends(get_current_user_id), 
     db: Session = Depends(get_db)
 ):
+    ALLOWED_MUMBAI_AREAS = {
+        "Colaba & South Mumbai",
+        "Dadar & Central Mumbai",
+        "Bandra & Western Suburbs",
+        "Andheri & Western Suburbs",
+        "Borivali & Northern Suburbs",
+        "Ghatkopar & Eastern Suburbs",
+        "Powai & East Mumbai",
+        "Thane",
+        "Navi Mumbai"
+    }
+    
+    if not booking_data.area_name or booking_data.area_name not in ALLOWED_MUMBAI_AREAS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Service area must be a valid region in Mumbai, Thane, or Navi Mumbai"
+        )
+        
+    address_lower = (booking_data.address or "").lower()
+    if not any(city in address_lower for city in ["mumbai", "thane", "navi mumbai"]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Doorstep address must be located in Mumbai, Thane, or Navi Mumbai"
+        )
+
     otp_code = str(random.randint(100000, 999999))
     new_booking = Booking(
         customer_id=customer_id,
@@ -343,14 +409,23 @@ def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id
         
         # 2. Selected area_name check
         if not is_in_area and b.area_name and partner_user.address:
-            if b.area_name.lower() in partner_user.address.lower():
+            b_area_lower = b.area_name.lower()
+            p_addr_lower = partner_user.address.lower()
+            if b_area_lower in p_addr_lower:
                 is_in_area = True
+            else:
+                # Check for significant keywords matching Mumbai regions
+                keywords = ["colaba", "dadar", "bandra", "andheri", "borivali", "ghatkopar", "powai", "thane", "navi mumbai"]
+                for kw in keywords:
+                    if kw in b_area_lower and kw in p_addr_lower:
+                        is_in_area = True
+                        break
                 
         # 3. Fallback: address-based matching
         if not is_in_area and not b.area_name:
             b_addr = b.address.lower()
             p_addr = (partner_user.address or "").lower()
-            cities = ["pune", "noida", "delhi", "ahmedabad", "bengaluru", "mumbai"]
+            cities = ["mumbai", "thane", "navi mumbai"]
             for city in cities:
                 if city in b_addr and city in p_addr:
                     is_in_area = True

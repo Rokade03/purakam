@@ -21,9 +21,23 @@ def seed_db():
             print("Migration: 'area_name' column added successfully.")
         if 'accepted_at' not in columns:
             print("Migration: Adding missing 'accepted_at' column to bookings table...")
+            db_type = "TIMESTAMP" if engine.dialect.name == "postgresql" else "DATETIME"
             with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE bookings ADD COLUMN accepted_at DATETIME;"))
+                conn.execute(text(f"ALTER TABLE bookings ADD COLUMN accepted_at {db_type};"))
             print("Migration: 'accepted_at' column added successfully.")
+
+    if inspector.has_table('partner_profiles'):
+        columns = [col['name'] for col in inspector.get_columns('partner_profiles')]
+        if 'aadhar_card' not in columns:
+            print("Migration: Adding missing 'aadhar_card' column to partner_profiles table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE partner_profiles ADD COLUMN aadhar_card VARCHAR(255);"))
+            print("Migration: 'aadhar_card' column added successfully.")
+        if 'pan_card' not in columns:
+            print("Migration: Adding missing 'pan_card' column to partner_profiles table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE partner_profiles ADD COLUMN pan_card VARCHAR(255);"))
+            print("Migration: 'pan_card' column added successfully.")
     
     db = SessionLocal()
     try:
@@ -76,9 +90,9 @@ def seed_db():
                 "email": "customer@purakam.in",
                 "password_hash": hash_password("customer123"),
                 "phone": "+919876543210",
-                "address": "402, Marvel Crest, Koregaon Park, Pune, Maharashtra - 411001",
-                "latitude": 18.5362,
-                "longitude": 73.8940,
+                "address": "402, Sea Breeze Apts, Bandra West, Mumbai, Maharashtra - 400050",
+                "latitude": 19.0600,
+                "longitude": 72.8258,
                 "role": "customer"
             },
             {
@@ -86,9 +100,9 @@ def seed_db():
                 "email": "admin@purakam.in",
                 "password_hash": hash_password("admin123"),
                 "phone": "+919999000099",
-                "address": "Purakam HQ, Koregaon Park, Pune, MH",
-                "latitude": 18.5362,
-                "longitude": 73.8940,
+                "address": "Purakam HQ, Bandra, Mumbai, MH - 400050",
+                "latitude": 19.0600,
+                "longitude": 72.8258,
                 "role": "admin"
             }
         ]
@@ -107,17 +121,19 @@ def seed_db():
                 "email": "rajesh@purakam.in",
                 "password_hash": hash_password("partner123"),
                 "phone": "+919999888877",
-                "address": "Block C, Sector 62, Noida, UP - 201301",
-                "latitude": 28.6280,
-                "longitude": 77.3800,
+                "address": "Sector 15, Vashi, Navi Mumbai, MH - 400703",
+                "latitude": None,
+                "longitude": None,
                 "role": "partner",
                 "profile": {
                     "service_category": "Electrician",
                     "hourly_rate": 250.0,
                     "rating": 4.8,
                     "availability_status": True,  # Online
-                    "bio": "Certified electrician with 8+ years experience. Noida based.",
-                    "completed_jobs": 154
+                    "bio": "Certified electrician with 8+ years experience. Navi Mumbai based.",
+                    "completed_jobs": 154,
+                    "aadhar_card": "111122223333",
+                    "pan_card": "ABCDE1234F"
                 }
             },
             {
@@ -125,17 +141,19 @@ def seed_db():
                 "email": "vijay@purakam.in",
                 "password_hash": hash_password("partner123"),
                 "phone": "+919999222233",
-                "address": "Yerwada, Pune, MH - 411006",
-                "latitude": 18.5529,
-                "longitude": 73.8796,
+                "address": "Andheri West, Mumbai, MH - 400053",
+                "latitude": 19.1197,
+                "longitude": 72.8468,
                 "role": "partner",
                 "profile": {
                     "service_category": "Electrician",
                     "hourly_rate": 280.0,
                     "rating": 4.5,
                     "availability_status": True,  # Online
-                    "bio": "Local Yerwada electrician. Fast home service in Pune areas.",
-                    "completed_jobs": 64
+                    "bio": "Local Andheri electrician. Fast home service in Mumbai areas.",
+                    "completed_jobs": 64,
+                    "aadhar_card": "222233334444",
+                    "pan_card": "BCDEF2345G"
                 }
             },
             {
@@ -143,17 +161,19 @@ def seed_db():
                 "email": "amit@purakam.in",
                 "password_hash": hash_password("partner123"),
                 "phone": "+919999111122",
-                "address": "H-32, Lajpat Nagar, New Delhi - 110024",
-                "latitude": 28.5684,
-                "longitude": 77.2503,
+                "address": "Dadar West, Mumbai, MH - 400028",
+                "latitude": 19.0178,
+                "longitude": 72.8302,
                 "role": "partner",
                 "profile": {
                     "service_category": "AC & Appliance Repair",
                     "hourly_rate": 299.0,
                     "rating": 4.6,
                     "availability_status": True,  # Online
-                    "bio": "Expert AC & Appliance repair technician. Noida and Delhi NCR coverage.",
-                    "completed_jobs": 98
+                    "bio": "Expert AC & Appliance repair technician in Dadar Mumbai.",
+                    "completed_jobs": 98,
+                    "aadhar_card": "333344445555",
+                    "pan_card": "CDEFG3456H"
                 }
             },
             {
@@ -161,17 +181,19 @@ def seed_db():
                 "email": "suresh@purakam.in",
                 "password_hash": hash_password("partner123"),
                 "phone": "+919999333344",
-                "address": "45, GIDC Estate, Ahmedabad, Gujarat - 380009",
-                "latitude": 23.0225,
-                "longitude": 72.5714,
+                "address": "Ghatkopar East, Mumbai, MH - 400077",
+                "latitude": 19.0856,
+                "longitude": 72.9082,
                 "role": "partner",
                 "profile": {
                     "service_category": "Inverter & Battery",
                     "hourly_rate": 450.0,
                     "rating": 4.9,
                     "availability_status": False,  # Offline
-                    "bio": "Specialized in home inverters, battery backups, and power testing.",
-                    "completed_jobs": 210
+                    "bio": "Specialized in home inverters, battery backups in Ghatkopar Mumbai.",
+                    "completed_jobs": 210,
+                    "aadhar_card": "444455556666",
+                    "pan_card": "DEFGH4567I"
                 }
             },
             {
@@ -179,17 +201,19 @@ def seed_db():
                 "email": "priya@purakam.in",
                 "password_hash": hash_password("partner123"),
                 "phone": "+919999555566",
-                "address": "Flat 101, Lakeview Apts, HSR Layout, Bengaluru, KA - 560102",
-                "latitude": 18.5463,
-                "longitude": 73.9033,
+                "address": "Hiranandani Gardens, Powai, Mumbai, MH - 400076",
+                "latitude": 19.1176,
+                "longitude": 72.9060,
                 "role": "partner",
                 "profile": {
                     "service_category": "Geyser & Water Heater",
                     "hourly_rate": 350.0,
                     "rating": 4.7,
                     "availability_status": True,  # Online
-                    "bio": "Professional geyser, thermostat, and water heater repair technician in Pune.",
-                    "completed_jobs": 87
+                    "bio": "Professional geyser, thermostat repair technician in Powai Mumbai.",
+                    "completed_jobs": 87,
+                    "aadhar_card": "555566667777",
+                    "pan_card": "EFGHI5678J"
                 }
             }
         ]
