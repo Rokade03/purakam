@@ -2090,21 +2090,46 @@ input:checked + .slider:before {
    MOBILE & TABLET RESPONSIVENESS UPDATES
    ================================================== */
 
-/* Hide mobile toggle by default on desktop */
-.mobile-menu-toggle {
+/* Hide mobile toggle and mobile actions by default on desktop */
+.mobile-menu-toggle,
+.navbar-actions-mobile {
     display: none;
 }
 
 @media (max-width: 768px) {
     /* 1. Global Navigation Bar Collapse & Menu Trigger */
+    .navbar-actions-mobile {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+    
+    .btn-login-mobile {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        border: 1px solid var(--border-glass);
+        padding: 0.4rem 0.9rem;
+        border-radius: var(--border-radius-sm);
+        background: var(--bg-surface);
+        transition: var(--transition-fast);
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .btn-login-mobile:hover {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+    }
+    
     .mobile-menu-toggle {
-        display: block;
+        display: flex;
         background: none;
         border: none;
         color: var(--text-primary);
         cursor: pointer;
         padding: 0.5rem;
-        display: flex;
         align-items: center;
         justify-content: center;
         z-index: 110;

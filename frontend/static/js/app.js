@@ -889,7 +889,7 @@ window.closeTrackingModal = function() {
 };
 
 // Mobile menu toggle logic
-document.addEventListener("DOMContentLoaded", () => {
+function initMobileMenu() {
     const menuToggle = document.getElementById("mobile-menu-toggle");
     const navLinks = document.getElementById("nav-links");
     if (menuToggle && navLinks) {
@@ -905,6 +905,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMobileMenu);
+} else {
+    initMobileMenu();
+}
 
 

@@ -27,9 +27,14 @@
                 <span>Purakam</span>
             </a>
             
-            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle Menu">
-                <i data-lucide="menu"></i>
-            </button>
+            <div class="navbar-actions-mobile">
+                {% if not session.get('user_id') %}
+                    <a href="{{ url_for('login') }}" class="btn-login-mobile">Login</a>
+                {% endif %}
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle Menu">
+                    <i data-lucide="menu"></i>
+                </button>
+            </div>
             
             <nav class="nav-links" id="nav-links">
                 {% if session.get('user_role') != 'partner' %}
