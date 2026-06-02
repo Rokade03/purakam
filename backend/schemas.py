@@ -84,6 +84,7 @@ class BookingCreate(BaseModel):
     longitude: Optional[float] = None
     partner_id: Optional[int] = None
     area_name: Optional[str] = None
+    pincode: str
 
 class ReviewCreate(BaseModel):
     booking_id: int
@@ -118,6 +119,7 @@ class BookingResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     area_name: Optional[str] = None
+    pincode: Optional[str] = None
     accepted_at: Optional[datetime] = None
     created_at: datetime
     

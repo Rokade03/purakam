@@ -25,6 +25,11 @@ def seed_db():
             with engine.begin() as conn:
                 conn.execute(text(f"ALTER TABLE bookings ADD COLUMN accepted_at {db_type};"))
             print("Migration: 'accepted_at' column added successfully.")
+        if 'pincode' not in columns:
+            print("Migration: Adding missing 'pincode' column to bookings table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN pincode VARCHAR(6);"))
+            print("Migration: 'pincode' column added successfully.")
 
     if inspector.has_table('partner_profiles'):
         columns = [col['name'] for col in inspector.get_columns('partner_profiles')]

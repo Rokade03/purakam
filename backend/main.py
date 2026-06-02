@@ -343,6 +343,20 @@ def create_booking(
             detail="Doorstep address must be located in Mumbai, Thane, or Navi Mumbai"
         )
 
+    # Validate pincode format and region
+    pincode = booking_data.pincode
+    if not pincode or len(pincode) != 6 or not pincode.isdigit():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pincode must be exactly 6 digits"
+        )
+        
+    if not (pincode.startswith("400") or pincode.startswith("401") or pincode.startswith("421")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Service is only available in Mumbai, Thane, or Navi Mumbai regions matching valid local pincodes"
+        )
+
     otp_code = str(random.randint(100000, 999999))
     new_booking = Booking(
         customer_id=customer_id,
@@ -359,7 +373,8 @@ def create_booking(
         otp=otp_code,
         latitude=booking_data.latitude,
         longitude=booking_data.longitude,
-        area_name=booking_data.area_name
+        area_name=booking_data.area_name,
+        pincode=booking_data.pincode
     )
     
     db.add(new_booking)

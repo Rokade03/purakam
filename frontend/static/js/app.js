@@ -197,6 +197,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Submit booking
         btnSubmit.addEventListener("click", async () => {
+            const pincode = document.getElementById("pincode").value.trim();
+            if (!pincode || pincode.length !== 6 || isNaN(pincode)) {
+                showToast("Please enter a valid 6-digit Pincode.", "warning");
+                return;
+            }
+            if (!pincode.startsWith("400") && !pincode.startsWith("401") && !pincode.startsWith("421")) {
+                showToast("Service is only available in Mumbai, Thane, or Navi Mumbai regions matching local pincodes.", "warning");
+                return;
+            }
+
             const method = document.querySelector('input[name="payment_method"]:checked').value;
             if (method === "UPI") {
                 const upiId = document.getElementById("upi_id").value;
@@ -226,7 +236,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 latitude: coords.latitude,
                 longitude: coords.longitude,
                 partner_id: null,
-                area_name: document.getElementById("area_name").value
+                area_name: document.getElementById("area_name").value,
+                pincode: pincode
             };
 
             try {

@@ -143,6 +143,26 @@ def run_tests():
     print("Partner status updated to: ONLINE")
 
     # 5. Place booking as customer with Mumbai coordinates (Geographic Proximity Test)
+    # Test invalid pincode booking attempt
+    print("Testing invalid pincode booking validation...")
+    invalid_pincode_payload = {
+        "service_category": "Electrician",
+        "booking_date": "2026-06-01",
+        "time_slot": "10:00 AM - 12:00 PM",
+        "details": "Install living room lights.",
+        "price": 349.0,
+        "address": "Sea Breeze Apts, Bandra West, Mumbai, MH",
+        "payment_method": "UPI",
+        "latitude": 19.0600,
+        "longitude": 72.8258,
+        "area_name": "Bandra & Western Suburbs",
+        "pincode": "500001" # Pune/Hyderabad pincode
+    }
+    r = requests.post(f"{API_URL}/bookings", json=invalid_pincode_payload, headers=cust_headers)
+    assert r.status_code == 400, f"Expected 400 for invalid pincode, got {r.status_code}"
+    assert "local pincodes" in r.text, f"Expected validation error, got: {r.text}"
+    print("Invalid pincode validation check passed.")
+
     # Booking at Bandra, Mumbai should match Vijay Shinde and Test Electrician (both Mumbai-based).
     print("\n5. Placing booking with Mumbai coordinates (Bandra)...")
     booking_payload_pune = {
@@ -155,7 +175,8 @@ def run_tests():
         "payment_method": "UPI",
         "latitude": 19.0600,
         "longitude": 72.8258,
-        "area_name": "Bandra & Western Suburbs"
+        "area_name": "Bandra & Western Suburbs",
+        "pincode": "400050"
     }
     r = requests.post(f"{API_URL}/bookings", json=booking_payload_pune, headers=cust_headers)
     assert r.status_code == 200, f"Failed to place Pune booking: {r.text}"
@@ -339,7 +360,8 @@ def run_tests():
         "payment_method": "COD",
         "latitude": 19.0600,
         "longitude": 72.8258,
-        "area_name": "Bandra & Western Suburbs"
+        "area_name": "Bandra & Western Suburbs",
+        "pincode": "400050"
     }
     r = requests.post(f"{API_URL}/bookings", json=booking_payload_expire, headers=cust_headers)
     assert r.status_code == 200, f"Failed to place booking: {r.text}"
