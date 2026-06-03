@@ -96,163 +96,133 @@
         </div>
     </div>
 
-    <!-- Booking List Header & Filters -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <h3 style="margin-bottom: 0;">Your Booking History</h3>
-        <!-- Filter Controls -->
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-            <div style="position: relative; min-width: 220px;">
-                <i data-lucide="search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted);"></i>
-                <input type="text" id="booking-search" placeholder="Search by ID, Service, Provider..." class="form-input" style="padding-left: 2.2rem; font-size: 0.85rem; padding-top: 0.5rem; padding-bottom: 0.5rem; width: 100%;" oninput="applyBookingFilters()">
-            </div>
-            <div style="min-width: 150px;">
-                <select id="booking-status-filter" class="filter-select" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: var(--bg-main); color: var(--text-primary); cursor: pointer; width: 100%;" onchange="applyBookingFilters()">
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active Requests</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                </select>
-            </div>
-        </div>
-    </div>
+    <!-- Active Services Section -->
+    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-heading);">
+        <i data-lucide="activity" style="color: var(--primary); width: 20px; height: 20px;"></i> Active Services
+    </h3>
     
-    <div id="booking-list-container" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div id="active-bookings-container" style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 3.5rem;">
+        {% set active_count = namespace(value=0) %}
         {% for booking in bookings %}
-            <div class="booking-item-card fade-in scroll-reveal customer-booking-card" data-status="{{ booking.status }}" data-searchable="#srv{{ booking.id }} {{ booking.service_category.lower() }} {% if booking.partner %}{{ booking.partner.name.lower() }}{% endif %}">
-                <!-- Header -->
-                <div class="booking-header">
-                    <span style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                        <i data-lucide="tag" style="width: 16px; height: 16px; color: var(--primary);"></i>
-                        Booking ID: #SRV{{ booking.id }}
-                    </span>
-                    <span class="status-badge badge-{{ booking.status }}">
-                        {{ booking.status | replace('_', ' ') }}
-                    </span>
-                </div>
-                
-                <!-- Body -->
-                <div class="booking-body">
-                    <div class="booking-meta">
-                        <div class="booking-meta-row">
-                            <i data-lucide="home"></i>
-                            <strong>Service:</strong> {{ booking.service_category }}
-                        </div>
-                        <div class="booking-meta-row">
-                            <i data-lucide="calendar"></i>
-                            <strong>Date & Time:</strong> {{ booking.booking_date }} at {{ booking.time_slot }}
-                        </div>
-                        <div class="booking-meta-row">
-                            <i data-lucide="map-pin"></i>
-                            <strong>Address:</strong> {{ booking.address }}
-                        </div>
-                        {% if booking.attachment_path %}
-                            <div class="booking-meta-row" style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">
-                                <div>
-                                    <i data-lucide="paperclip" style="vertical-align: middle; margin-right: 4px;"></i>
-                                    <strong>Problem Attachments:</strong>
-                                </div>
-                                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-left: 1.5rem; margin-top: 0.2rem;">
-                                    {% for img in booking.attachment_path.split(',') %}
-                                        <a href="{{ BACKEND_BASE_URL }}/uploads/{{ img }}" target="_blank" style="text-decoration: underline; color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem;">
-                                            <i data-lucide="image" style="width: 14px; height: 14px;"></i> View Attachment {{ loop.index }}
-                                        </a>
-                                    {% endfor %}
-                                </div>
+            {% if booking.status in ['requested', 'accepted', 'on_the_way', 'in_progress'] %}
+                {% set active_count.value = active_count.value + 1 %}
+                <div class="booking-item-card fade-in scroll-reveal" data-status="{{ booking.status }}">
+                    <!-- Header -->
+                    <div class="booking-header">
+                        <span style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                            <i data-lucide="tag" style="width: 16px; height: 16px; color: var(--primary);"></i>
+                            Booking ID: #SRV{{ booking.id }}
+                        </span>
+                        <span class="status-badge badge-{{ booking.status }}">
+                            {{ booking.status | replace('_', ' ') }}
+                        </span>
+                    </div>
+                    
+                    <!-- Body -->
+                    <div class="booking-body">
+                        <div class="booking-meta">
+                            <div class="booking-meta-row">
+                                <i data-lucide="home"></i>
+                                <strong>Service:</strong> {{ booking.service_category }}
                             </div>
-                        {% endif %}
-                        
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-glass);">
-                            {% if booking.partner %}
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;">
-                                    <div style="display: flex; align-items: center; gap: 0.8rem;">
-                                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">
-                                            {{ booking.partner.name[0] }}
-                                        </div>
-                                        <div>
-                                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Assigned Service Provider</p>
-                                            <p style="margin: 0; font-weight: 600;">{{ booking.partner.name }} ({{ booking.partner.phone }})</p>
-                                        </div>
+                            <div class="booking-meta-row">
+                                <i data-lucide="calendar"></i>
+                                <strong>Date & Time:</strong> {{ booking.booking_date }} at {{ booking.time_slot }}
+                            </div>
+                            <div class="booking-meta-row">
+                                <i data-lucide="map-pin"></i>
+                                <strong>Address:</strong> {{ booking.address }}
+                            </div>
+                            {% if booking.attachment_path %}
+                                <div class="booking-meta-row" style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">
+                                    <div>
+                                        <i data-lucide="paperclip" style="vertical-align: middle; margin-right: 4px;"></i>
+                                        <strong>Problem Attachments:</strong>
                                     </div>
-                                                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                        {% if booking.status not in ['completed', 'cancelled'] %}
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-left: 1.5rem; margin-top: 0.2rem;">
+                                        {% for img in booking.attachment_path.split(',') %}
+                                            <a href="{{ BACKEND_BASE_URL }}/uploads/{{ img }}" target="_blank" style="text-decoration: underline; color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem;">
+                                                <i data-lucide="image" style="width: 14px; height: 14px;"></i> View Attachment {{ loop.index }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-glass);">
+                                {% if booking.partner %}
+                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                            <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">
+                                                {{ booking.partner.name[0] }}
+                                            </div>
+                                            <div>
+                                                <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Assigned Service Provider</p>
+                                                <p style="margin: 0; font-weight: 600;">{{ booking.partner.name }} ({{ booking.partner.phone }})</p>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem; align-items: center;">
                                             <button class="chat-launcher-btn" onclick="openChatDrawer({{ booking.id }}, '{{ booking.partner.name }}')">
                                                 <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Chat
                                             </button>
-                                        {% endif %}
-                                        {% if booking.status in ['accepted', 'on_the_way', 'in_progress'] %}
                                             <button class="btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="openTrackingModal({{ booking.id }}, {{ booking.latitude or 'null' }}, {{ booking.longitude or 'null' }}, '{{ booking.partner.name }}')">
                                                 <i data-lucide="map" style="width: 14px; height: 14px;"></i> Track
                                             </button>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% else %}
-                                <div class="broadcasting-radar-container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: rgba(0, 0, 0, 0.03); padding: 1.2rem 1.5rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); width: 100%; position: relative; overflow: hidden;">
-                                    <div style="display: flex; align-items: center; gap: 1.2rem; z-index: 1;">
-                                        <!-- Radar Scanner Animation -->
-                                        <div class="radar-scanner" style="position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.05); border-radius: 50%; border: 1px solid var(--border-glass); flex-shrink: 0;">
-                                            <i data-lucide="radar" style="width: 20px; height: 20px; color: var(--accent); z-index: 2;" class="rotating-radar"></i>
-                                            <div class="radar-ring ring-1"></div>
-                                            <div class="radar-ring ring-2"></div>
-                                            <div class="radar-ring ring-3"></div>
-                                        </div>
-                                        <div>
-                                            <!-- Dynamic Status Carousel -->
-                                            <span class="broadcasting-status-text" style="font-size: 0.95rem; font-weight: 600; display: block; color: var(--text-primary); transition: opacity 0.3s ease;">Broadcasting request to certified professionals...</span>
-                                            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">First available partner in this category will accept the job</span>
                                         </div>
                                     </div>
-                                    <div class="broadcasting-timer-badge" style="z-index: 1; background: var(--bg-surface); padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid var(--border-glass); font-size: 0.8rem; font-weight: 700; font-family: monospace; display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary);">
-                                        <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
-                                        <span class="matching-time-elapsed" data-start-time="{{ booking.created_at }}">0:00</span>
+                                {% else %}
+                                    <div class="broadcasting-radar-container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: rgba(0, 0, 0, 0.03); padding: 1.2rem 1.5rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); width: 100%; position: relative; overflow: hidden;">
+                                        <div style="display: flex; align-items: center; gap: 1.2rem; z-index: 1;">
+                                            <!-- Radar Scanner Animation -->
+                                            <div class="radar-scanner" style="position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.05); border-radius: 50%; border: 1px solid var(--border-glass); flex-shrink: 0;">
+                                                <i data-lucide="radar" style="width: 20px; height: 20px; color: var(--accent); z-index: 2;" class="rotating-radar"></i>
+                                                <div class="radar-ring ring-1"></div>
+                                                <div class="radar-ring ring-2"></div>
+                                                <div class="radar-ring ring-3"></div>
+                                            </div>
+                                            <div>
+                                                <!-- Dynamic Status Carousel -->
+                                                <span class="broadcasting-status-text" style="font-size: 0.95rem; font-weight: 600; display: block; color: var(--text-primary); transition: opacity 0.3s ease;">Broadcasting request to certified professionals...</span>
+                                                <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">First available partner in this category will accept the job</span>
+                                            </div>
+                                        </div>
+                                        <div class="broadcasting-timer-badge" style="z-index: 1; background: var(--bg-surface); padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid var(--border-glass); font-size: 0.8rem; font-weight: 700; font-family: monospace; display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary);">
+                                            <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
+                                            <span class="matching-time-elapsed" data-start-time="{{ booking.created_at }}">0:00</span>
+                                        </div>
                                     </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if booking.otp and booking.partner %}
+                                <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid var(--border-glass); border-radius: var(--border-radius-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                                    <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
+                                        <i data-lucide="shield-check" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; color: var(--primary);"></i>
+                                        Share this OTP with partner to start work:
+                                    </span>
+                                    <span style="font-family: monospace; font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); background: var(--bg-surface); padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid var(--border-glass);">
+                                        {{ booking.otp }}
+                                    </span>
                                 </div>
                             {% endif %}
                         </div>
                         
-                        {% if booking.status not in ['completed', 'cancelled'] and booking.otp and booking.partner %}
-                            <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid var(--border-glass); border-radius: var(--border-radius-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                                <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
-                                    <i data-lucide="shield-check" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; color: var(--primary);"></i>
-                                    Share this OTP with partner to start work:
-                                </span>
-                                <span style="font-family: monospace; font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); background: var(--bg-surface); padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid var(--border-glass);">
-                                    {{ booking.otp }}
-                                </span>
+                        <!-- Costing & Review actions -->
+                        <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Grand Total Paid (via {{ booking.payment_method }})</div>
+                                <div style="font-size: 1.6rem; font-family: var(--font-heading); font-weight: 700; color: var(--accent);">₹{{ booking.price | int }}</div>
                             </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Costing & Review actions -->
-                    <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Grand Total Paid (via {{ booking.payment_method }})</div>
-                            <div style="font-size: 1.6rem; font-family: var(--font-heading); font-weight: 700; color: var(--accent);">₹{{ booking.price | int }}</div>
-                        </div>
-                        
-                        <div>
-                            {% if booking.status in ['requested', 'accepted'] %}
+                            
+                            <div>
                                 <button onclick="cancelBooking({{ booking.id }})" class="btn-secondary" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                     <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Cancel Booking
                                 </button>
-                            {% elif booking.status == 'completed' %}
-                                {% if booking.review %}
-                                    <div style="text-align: right; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--border-radius-sm); padding: 0.5rem 0.8rem; font-size: 0.85rem;">
-                                        <span style="color: var(--warning); font-weight: 600;">{{ '★' * booking.review.rating }}</span>
-                                        <p style="margin-top: 0.2rem; color: var(--text-secondary); italic;">"{{ booking.review.comment }}"</p>
-                                    </div>
-                                {% else %}
-                                    <button onclick="openReviewModal({{ booking.id }})" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-                                        <i data-lucide="star" style="width: 14px; height: 14px;"></i> Rate & Review
-                                    </button>
-                                {% endif %}
-                            {% endif %}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Horizontal progress lifecycle bar -->
-                {% if booking.status != 'cancelled' %}
+                    <!-- Horizontal progress lifecycle bar -->
                     <div class="booking-lifecycle">
                         <div class="lifecycle-step {% if booking.status in ['accepted', 'on_the_way', 'in_progress', 'completed'] %}completed{% elif booking.status == 'requested' %}active{% endif %}">
                             <div class="lifecycle-dot"></div>
@@ -275,17 +245,140 @@
                             <span>Completed</span>
                         </div>
                     </div>
-                {% endif %}
-            </div>
-        {% else %}
-            <div class="glass-card" style="text-align: center; padding: 4rem 2rem;">
-                <i data-lucide="calendar" style="width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto;"></i>
-                <h3>No Bookings Placed Yet</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem; margin-top: 0.5rem;">Explore service categories and book certified experts at upfront rates.</p>
-                <a href="{{ url_for('services') }}" class="btn-primary">Browse Services <i data-lucide="arrow-right"></i></a>
-            </div>
+                </div>
+            {% endif %}
         {% endfor %}
+        
+        {% if active_count.value == 0 %}
+            <div class="glass-card" style="text-align: center; padding: 2.5rem 1.5rem; color: var(--text-muted);">
+                <i data-lucide="calendar" style="width: 40px; height: 40px; margin: 0 auto 0.8rem auto; display: block; opacity: 0.6;"></i>
+                <p style="font-size: 0.95rem;">No active services in progress.</p>
+                <a href="{{ url_for('services') }}" class="btn-primary" style="margin-top: 1rem; display: inline-flex; font-size: 0.85rem; padding: 0.5rem 1rem; gap: 0.4rem; align-items: center;">
+                    Browse Services <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
+                </a>
+            </div>
+        {% endif %}
     </div>
+
+    <!-- Past Services Section (History) -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--border-glass); padding-top: 2.5rem;">
+        <h3 style="margin-bottom: 0; display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-heading);">
+            <i data-lucide="history" style="color: var(--primary); width: 20px; height: 20px;"></i> Booking History
+        </h3>
+        <!-- Filter Controls -->
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; min-width: 220px;">
+                <i data-lucide="search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted);"></i>
+                <input type="text" id="booking-search" placeholder="Search by ID, Service, Provider..." class="form-input" style="padding-left: 2.2rem; font-size: 0.85rem; padding-top: 0.5rem; padding-bottom: 0.5rem; width: 100%;" oninput="applyBookingFilters()">
+            </div>
+            <div style="min-width: 150px;">
+                <select id="booking-status-filter" class="filter-select" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: var(--bg-main); color: var(--text-primary); cursor: pointer; width: 100%;" onchange="applyBookingFilters()">
+                    <option value="all">All Past Bookings</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div id="past-bookings-list-container" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        {% set past_count = namespace(value=0) %}
+        {% for booking in bookings %}
+            {% if booking.status in ['completed', 'cancelled'] %}
+                {% set past_count.value = past_count.value + 1 %}
+                <div class="booking-item-card fade-in scroll-reveal past-booking-card" data-status="{{ booking.status }}" data-searchable="#srv{{ booking.id }} {{ booking.service_category.lower() }} {% if booking.partner %}{{ booking.partner.name.lower() }}{% endif %}">
+                    <!-- Header -->
+                    <div class="booking-header">
+                        <span style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                            <i data-lucide="tag" style="width: 16px; height: 16px; color: var(--primary);"></i>
+                            Booking ID: #SRV{{ booking.id }}
+                        </span>
+                        <span class="status-badge badge-{{ booking.status }}">
+                            {{ booking.status | replace('_', ' ') }}
+                        </span>
+                    </div>
+                    
+                    <!-- Body -->
+                    <div class="booking-body">
+                        <div class="booking-meta">
+                            <div class="booking-meta-row">
+                                <i data-lucide="home"></i>
+                                <strong>Service:</strong> {{ booking.service_category }}
+                            </div>
+                            <div class="booking-meta-row">
+                                <i data-lucide="calendar"></i>
+                                <strong>Date & Time:</strong> {{ booking.booking_date }} at {{ booking.time_slot }}
+                            </div>
+                            <div class="booking-meta-row">
+                                <i data-lucide="map-pin"></i>
+                                <strong>Address:</strong> {{ booking.address }}
+                            </div>
+                            {% if booking.attachment_path %}
+                                <div class="booking-meta-row" style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.3rem;">
+                                    <div>
+                                        <i data-lucide="paperclip" style="vertical-align: middle; margin-right: 4px;"></i>
+                                        <strong>Problem Attachments:</strong>
+                                    </div>
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-left: 1.5rem; margin-top: 0.2rem;">
+                                        {% for img in booking.attachment_path.split(',') %}
+                                            <a href="{{ BACKEND_BASE_URL }}/uploads/{{ img }}" target="_blank" style="text-decoration: underline; color: var(--text-primary); font-weight: 500; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem;">
+                                                <i data-lucide="image" style="width: 14px; height: 14px;"></i> View Attachment {{ loop.index }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if booking.partner %}
+                                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-glass);">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                            <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">
+                                                {{ booking.partner.name[0] }}
+                                            </div>
+                                            <div>
+                                                <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Service Provider</p>
+                                                <p style="margin: 0; font-weight: 600;">{{ booking.partner.name }} ({{ booking.partner.phone }})</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Costing & Review actions -->
+                        <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Grand Total Paid (via {{ booking.payment_method }})</div>
+                                <div style="font-size: 1.6rem; font-family: var(--font-heading); font-weight: 700; color: var(--accent);">₹{{ booking.price | int }}</div>
+                            </div>
+                            
+                            <div>
+                                {% if booking.status == 'completed' %}
+                                    {% if booking.review %}
+                                        <div style="text-align: right; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--border-radius-sm); padding: 0.5rem 0.8rem; font-size: 0.85rem;">
+                                            <span style="color: var(--warning); font-weight: 600;">{{ '★' * booking.review.rating }}</span>
+                                            <p style="margin-top: 0.2rem; color: var(--text-secondary); italic;">"{{ booking.review.comment }}"</p>
+                                        </div>
+                                    {% else %}
+                                        <button onclick="openReviewModal({{ booking.id }})" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                            <i data-lucide="star" style="width: 14px; height: 14px;"></i> Rate & Review
+                                        </button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+        
+        {% if past_count.value == 0 %}
+            <div class="glass-card" style="text-align: center; padding: 3rem 2rem; color: var(--text-muted);">
+                <i data-lucide="archive" style="width: 48px; height: 48px; margin: 0 auto 1rem auto; display: block; opacity: 0.6;"></i>
+                <p>No past booking records found.</p>
+            </div>
+        {% endif %}    </div>
 </div>
 
 <!-- Live Tracking Modal -->
@@ -383,7 +476,7 @@
     function applyBookingFilters() {
         const query = document.getElementById("booking-search").value.toLowerCase().trim();
         const filter = document.getElementById("booking-status-filter").value;
-        const cards = document.querySelectorAll(".customer-booking-card");
+        const cards = document.querySelectorAll(".past-booking-card");
         let visibleCount = 0;
         
         cards.forEach(card => {
@@ -395,8 +488,6 @@
             
             if (filter === "all") {
                 matchesFilter = true;
-            } else if (filter === "active") {
-                matchesFilter = ["requested", "accepted", "on_the_way", "in_progress"].includes(status);
             } else {
                 matchesFilter = (status === filter);
             }
@@ -411,7 +502,7 @@
         
         // Manage no results display
         let noResults = document.getElementById("no-bookings-filter-results");
-        const listContainer = document.getElementById("booking-list-container");
+        const listContainer = document.getElementById("past-bookings-list-container");
         
         if (visibleCount === 0) {
             if (!noResults && listContainer) {
