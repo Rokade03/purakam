@@ -159,7 +159,24 @@
     <div id="tab-users" class="admin-tab-content">
         <div class="glass-card" style="padding: 1.8rem; overflow-x: auto;">
             <h3 style="margin-bottom: 1.5rem;"><i data-lucide="shield-alert" style="color: var(--primary); vertical-align: middle;"></i> User Database Registry</h3>
-            <table style="width: 100%; border-collapse: collapse; min-width: 700px; text-align: left;">
+            
+            <!-- Filter Controls for Users -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
+                <div style="flex: 1; min-width: 250px; position: relative;">
+                    <i data-lucide="search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted);"></i>
+                    <input type="text" id="admin-users-search" placeholder="Search users by name, email, phone..." class="form-input" style="padding-left: 2.2rem; font-size: 0.85rem; padding-top: 0.5rem; padding-bottom: 0.5rem; width: 100%;" oninput="applyAdminUsersFilters()">
+                </div>
+                <div style="min-width: 160px;">
+                    <select id="admin-users-role-filter" class="filter-select" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: var(--bg-main); color: var(--text-primary); cursor: pointer; width: 100%;" onchange="applyAdminUsersFilters()">
+                        <option value="all">All Roles</option>
+                        <option value="customer">Customer</option>
+                        <option value="partner">Partner</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+
+            <table id="admin-users-table" style="width: 100%; border-collapse: collapse; min-width: 700px; text-align: left;">
                 <thead>
                     <tr style="border-bottom: 1px solid var(--primary); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
                         <th style="padding: 1rem;">User ID</th>
@@ -172,7 +189,7 @@
                 </thead>
                 <tbody>
                     {% for u in users %}
-                        <tr style="border-bottom: 1px solid var(--border-glass); font-size: 0.9rem; transition: var(--transition-fast);" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+                        <tr class="user-row" data-role="{{ u.role }}" data-searchable="{{ u.name.lower() }} {{ u.email.lower() }} {{ u.phone }} #usr{{ u.id }}" style="border-bottom: 1px solid var(--border-glass); font-size: 0.9rem; transition: var(--transition-fast);" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                             <td style="padding: 1rem; color: var(--text-muted); font-family: monospace;">#USR{{ u.id }}</td>
                             <td style="padding: 1rem; font-weight: 600;">{{ u.name }}</td>
                             <td style="padding: 1rem; color: var(--text-secondary);">{{ u.email }}</td>
@@ -202,6 +219,35 @@
     <div id="tab-bookings" class="admin-tab-content">
         <div class="glass-card" style="padding: 1.8rem; overflow-x: auto;">
             <h3 style="margin-bottom: 1.5rem;"><i data-lucide="credit-card" style="color: var(--primary); vertical-align: middle;"></i> Central Booking Ledger</h3>
+            
+            <!-- Filter Controls for Transactions -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
+                <div style="flex: 1; min-width: 250px; position: relative;">
+                    <i data-lucide="search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted);"></i>
+                    <input type="text" id="admin-bookings-search" placeholder="Search transactions by Booking ID, Service, Customer, Partner..." class="form-input" style="padding-left: 2.2rem; font-size: 0.85rem; padding-top: 0.5rem; padding-bottom: 0.5rem; width: 100%;" oninput="applyAdminBookingsFilters()">
+                </div>
+                <div style="min-width: 150px;">
+                    <select id="admin-bookings-status-filter" class="filter-select" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: var(--bg-main); color: var(--text-primary); cursor: pointer; width: 100%;" onchange="applyAdminBookingsFilters()">
+                        <option value="all">All Statuses</option>
+                        <option value="requested">Requested</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="on_the_way">On The Way</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div style="min-width: 150px;">
+                    <select id="admin-bookings-sort" class="filter-select" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: var(--bg-main); color: var(--text-primary); cursor: pointer; width: 100%;" onchange="applyAdminBookingsFilters()">
+                        <option value="default">Default Order</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="date-desc">Date: Newest</option>
+                        <option value="date-asc">Date: Oldest</option>
+                    </select>
+                </div>
+            </div>
+
             <table style="width: 100%; border-collapse: collapse; min-width: 800px; text-align: left;">
                 <thead>
                     <tr style="border-bottom: 1px solid var(--primary); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -214,9 +260,9 @@
                         <th style="padding: 1rem; text-align: center;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="admin-bookings-tbody">
                     {% for b in bookings %}
-                        <tr style="border-bottom: 1px solid var(--border-glass); font-size: 0.9rem; transition: var(--transition-fast);" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+                        <tr class="booking-row" data-status="{{ b.status }}" data-price="{{ b.price }}" data-date="{{ b.booking_date }}" data-id="{{ b.id }}" data-searchable="#srv{{ b.id }} {{ b.service_category.lower() }} {{ b.customer.name.lower() }} {% if b.partner %}{{ b.partner.name.lower() }}{% endif %}" style="border-bottom: 1px solid var(--border-glass); font-size: 0.9rem; transition: var(--transition-fast);" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                             <td style="padding: 1rem; color: var(--text-muted); font-family: monospace;">#SRV{{ b.id }}</td>
                             <td style="padding: 1rem; font-weight: 500;">{{ b.service_category }}</td>
                             <td style="padding: 1rem;">
@@ -386,6 +432,132 @@
             setTimeout(() => window.location.reload(), 1000);
         } catch (err) {
             console.error("Create category error:", err);
+        }
+    }
+
+    // Client-Side Admin Users Filtering
+    function applyAdminUsersFilters() {
+        const query = document.getElementById("admin-users-search").value.toLowerCase().trim();
+        const role = document.getElementById("admin-users-role-filter").value;
+        const rows = document.querySelectorAll(".user-row");
+        
+        let visibleCount = 0;
+        rows.forEach(row => {
+            const searchable = row.dataset.searchable.toLowerCase();
+            const uRole = row.dataset.role;
+            
+            const matchesSearch = searchable.includes(query);
+            const matchesRole = (role === "all" || uRole === role);
+            
+            if (matchesSearch && matchesRole) {
+                row.style.display = "";
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Manage no results display
+        let noResults = document.getElementById("admin-users-no-results");
+        const tbody = document.querySelector("#admin-users-table tbody");
+        if (visibleCount === 0) {
+            if (!noResults && tbody) {
+                noResults = document.createElement("tr");
+                noResults.id = "admin-users-no-results";
+                noResults.innerHTML = `
+                    <td colspan="6" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                        <i data-lucide="alert-circle" style="width: 32px; height: 32px; margin: 0 auto 0.5rem auto; display: block; opacity: 0.7;"></i>
+                        No registered users match your search filters.
+                    </td>
+                `;
+                tbody.appendChild(noResults);
+                if (window.lucide) lucide.createIcons();
+            } else if (noResults) {
+                noResults.style.display = "";
+            }
+        } else if (noResults) {
+            noResults.style.display = "none";
+        }
+    }
+
+    // Client-Side Admin Bookings/Transactions Filtering and Sorting
+    function applyAdminBookingsFilters() {
+        const query = document.getElementById("admin-bookings-search").value.toLowerCase().trim();
+        const status = document.getElementById("admin-bookings-status-filter").value;
+        const sortOption = document.getElementById("admin-bookings-sort").value;
+        const tbody = document.getElementById("admin-bookings-tbody");
+        const rows = Array.from(tbody.querySelectorAll(".booking-row"));
+        
+        let visibleCount = 0;
+        rows.forEach(row => {
+            const searchable = row.dataset.searchable.toLowerCase();
+            const bStatus = row.dataset.status;
+            
+            const matchesSearch = searchable.includes(query);
+            const matchesStatus = (status === "all" || bStatus === status);
+            
+            if (matchesSearch && matchesStatus) {
+                row.style.display = "";
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Manage no results display
+        let noResults = document.getElementById("admin-bookings-no-results");
+        if (visibleCount === 0) {
+            if (!noResults && tbody) {
+                noResults = document.createElement("tr");
+                noResults.id = "admin-bookings-no-results";
+                noResults.innerHTML = `
+                    <td colspan="7" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                        <i data-lucide="alert-circle" style="width: 32px; height: 32px; margin: 0 auto 0.5rem auto; display: block; opacity: 0.7;"></i>
+                        No bookings match your search filters.
+                    </td>
+                `;
+                tbody.appendChild(noResults);
+                if (window.lucide) lucide.createIcons();
+            } else if (noResults) {
+                noResults.style.display = "";
+            }
+        } else if (noResults) {
+            noResults.style.display = "none";
+        }
+
+        // Sorting logic
+        if (sortOption !== "default") {
+            rows.sort((a, b) => {
+                const priceA = parseFloat(a.dataset.price);
+                const priceB = parseFloat(b.dataset.price);
+                const idA = parseInt(a.dataset.id);
+                const idB = parseInt(b.dataset.id);
+                
+                // Parse dates
+                const dateA = new Date(a.dataset.date);
+                const dateB = new Date(b.dataset.date);
+
+                if (sortOption === "price-desc") {
+                    return priceB - priceA;
+                } else if (sortOption === "price-asc") {
+                    return priceA - priceB;
+                } else if (sortOption === "date-desc") {
+                    return dateB - dateA || idB - idA;
+                } else if (sortOption === "date-asc") {
+                    return dateA - dateB || idA - idB;
+                }
+                return 0;
+            });
+
+            // Re-append rows in sorted order
+            rows.forEach(row => {
+                tbody.appendChild(row);
+            });
+
+            // Put no results block back at the end
+            if (noResults) {
+                tbody.appendChild(noResults);
+            }
         }
     }
 </script>

@@ -96,12 +96,29 @@
         </div>
     </div>
 
-    <!-- Booking List -->
-    <h3 style="margin-bottom: 1.5rem;">Your Booking History</h3>
+    <!-- Booking List Header & Filters -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <h3 style="margin-bottom: 0;">Your Booking History</h3>
+        <!-- Filter Controls -->
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; min-width: 220px;">
+                <i data-lucide="search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted);"></i>
+                <input type="text" id="booking-search" placeholder="Search by ID, Service, Provider..." class="form-input" style="padding-left: 2.2rem; font-size: 0.85rem; padding-top: 0.5rem; padding-bottom: 0.5rem; width: 100%;" oninput="applyBookingFilters()">
+            </div>
+            <div style="min-width: 150px;">
+                <select id="booking-status-filter" class="filter-select" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); background: var(--bg-main); color: var(--text-primary); cursor: pointer; width: 100%;" onchange="applyBookingFilters()">
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active Requests</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+        </div>
+    </div>
     
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div id="booking-list-container" style="display: flex; flex-direction: column; gap: 1.5rem;">
         {% for booking in bookings %}
-            <div class="booking-item-card fade-in scroll-reveal">
+            <div class="booking-item-card fade-in scroll-reveal customer-booking-card" data-status="{{ booking.status }}" data-searchable="#srv{{ booking.id }} {{ booking.service_category.lower() }} {% if booking.partner %}{{ booking.partner.name.lower() }}{% endif %}">
                 <!-- Header -->
                 <div class="booking-header">
                     <span style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
@@ -170,12 +187,25 @@
                                     </div>
                                 </div>
                             {% else %}
-                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; background: rgba(0, 0, 0, 0.02); padding: 0.8rem 1rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); width: 100%;">
-                                    <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary);">
-                                        <i data-lucide="radar" class="pulse" style="width: 20px; height: 20px; color: var(--accent);"></i>
-                                        <span style="font-size: 0.9rem; font-weight: 600;">Broadcasting to nearby partners...</span>
+                                <div class="broadcasting-radar-container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: rgba(0, 0, 0, 0.03); padding: 1.2rem 1.5rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); width: 100%; position: relative; overflow: hidden;">
+                                    <div style="display: flex; align-items: center; gap: 1.2rem; z-index: 1;">
+                                        <!-- Radar Scanner Animation -->
+                                        <div class="radar-scanner" style="position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.05); border-radius: 50%; border: 1px solid var(--border-glass); flex-shrink: 0;">
+                                            <i data-lucide="radar" style="width: 20px; height: 20px; color: var(--accent); z-index: 2;" class="rotating-radar"></i>
+                                            <div class="radar-ring ring-1"></div>
+                                            <div class="radar-ring ring-2"></div>
+                                            <div class="radar-ring ring-3"></div>
+                                        </div>
+                                        <div>
+                                            <!-- Dynamic Status Carousel -->
+                                            <span class="broadcasting-status-text" style="font-size: 0.95rem; font-weight: 600; display: block; color: var(--text-primary); transition: opacity 0.3s ease;">Broadcasting request to certified professionals...</span>
+                                            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">First available partner in this category will accept the job</span>
+                                        </div>
                                     </div>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">First available technician will accept the job</span>
+                                    <div class="broadcasting-timer-badge" style="z-index: 1; background: var(--bg-surface); padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid var(--border-glass); font-size: 0.8rem; font-weight: 700; font-family: monospace; display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary);">
+                                        <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
+                                        <span class="matching-time-elapsed" data-start-time="{{ booking.created_at }}">0:00</span>
+                                    </div>
                                 </div>
                             {% endif %}
                         </div>
@@ -285,4 +315,169 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Radar Scanner Animations */
+    .rotating-radar {
+        animation: rotate-radar-icon 4s linear infinite;
+    }
+    @keyframes rotate-radar-icon {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .radar-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 1.5px solid var(--primary);
+        border-radius: 50%;
+        opacity: 0;
+        transform: scale(0.8);
+        animation: radar-ring-expand 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+    }
+    .radar-ring.ring-1 {
+        animation-delay: 0s;
+    }
+    .radar-ring.ring-2 {
+        animation-delay: 1s;
+    }
+    .radar-ring.ring-3 {
+        animation-delay: 2s;
+    }
+    @keyframes radar-ring-expand {
+        0% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+        50% {
+            opacity: 0.25;
+        }
+        100% {
+            transform: scale(2.2);
+            opacity: 0;
+        }
+    }
+    
+    /* Glowing radar sweep effect on card background */
+    .broadcasting-radar-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -150%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.02), transparent);
+        transform: skewX(-25deg);
+        animation: radar-sweep-shine 6s ease-in-out infinite;
+    }
+    @keyframes radar-sweep-shine {
+        0% { left: -150%; }
+        50% { left: 150%; }
+        100% { left: 150%; }
+    }
+</style>
+
+<script>
+    // Client-Side Booking Filters
+    function applyBookingFilters() {
+        const query = document.getElementById("booking-search").value.toLowerCase().trim();
+        const filter = document.getElementById("booking-status-filter").value;
+        const cards = document.querySelectorAll(".customer-booking-card");
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const searchable = card.dataset.searchable.toLowerCase();
+            const status = card.dataset.status;
+            
+            const matchesSearch = searchable.includes(query);
+            let matchesFilter = false;
+            
+            if (filter === "all") {
+                matchesFilter = true;
+            } else if (filter === "active") {
+                matchesFilter = ["requested", "accepted", "on_the_way", "in_progress"].includes(status);
+            } else {
+                matchesFilter = (status === filter);
+            }
+            
+            if (matchesSearch && matchesFilter) {
+                card.style.display = "block";
+                visibleCount++;
+            } else {
+                card.style.display = "none";
+            }
+        });
+        
+        // Manage no results display
+        let noResults = document.getElementById("no-bookings-filter-results");
+        const listContainer = document.getElementById("booking-list-container");
+        
+        if (visibleCount === 0) {
+            if (!noResults && listContainer) {
+                noResults = document.createElement("div");
+                noResults.id = "no-bookings-filter-results";
+                noResults.className = "glass-card";
+                noResults.style.textAlign = "center";
+                noResults.style.color = "var(--text-muted)";
+                noResults.style.padding = "4rem 2rem";
+                noResults.innerHTML = `
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; margin: 0 auto 1rem auto; display: block;"></i>
+                    <p>No bookings match your active filters.</p>
+                `;
+                listContainer.appendChild(noResults);
+                if (window.lucide) lucide.createIcons();
+            } else if (noResults) {
+                noResults.style.display = "block";
+            }
+        } else if (noResults) {
+            noResults.style.display = "none";
+        }
+    }
+
+    // Live Broadcasting Timer & Status Carousel
+    function updateBroadcastingTimers() {
+        document.querySelectorAll(".matching-time-elapsed").forEach(el => {
+            const startTimeStr = el.dataset.startTime;
+            if (!startTimeStr) return;
+            
+            const startTime = new Date(startTimeStr.replace(" ", "T"));
+            const now = new Date();
+            const diffSeconds = Math.max(0, Math.floor((now - startTime) / 1000));
+            
+            const minutes = Math.floor(diffSeconds / 60);
+            const seconds = diffSeconds % 60;
+            el.innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        });
+    }
+
+    const statusMessages = [
+        "Broadcasting request to certified professionals...",
+        "Awaiting partner acceptance in your area...",
+        "Matching within your selected specialty category...",
+        "Checking technician availability in Mumbai..."
+    ];
+    let statusIndex = 0;
+    function cycleBroadcastingStatuses() {
+        statusIndex = (statusIndex + 1) % statusMessages.length;
+        document.querySelectorAll(".broadcasting-status-text").forEach(el => {
+            el.style.opacity = 0;
+            setTimeout(() => {
+                el.innerText = statusMessages[statusIndex];
+                el.style.opacity = 1;
+            }, 300);
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Init active timers
+        updateBroadcastingTimers();
+        setInterval(updateBroadcastingTimers, 1000);
+        
+        // Init status message cycle if broadcasting elements exist
+        if (document.querySelector(".broadcasting-status-text")) {
+            setInterval(cycleBroadcastingStatuses, 4000);
+        }
+    });
+</script>
 {% endblock %}
