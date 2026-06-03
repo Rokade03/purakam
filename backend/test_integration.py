@@ -135,6 +135,12 @@ def run_tests():
     rajesh_id = r.json()["id"]
     rajesh_headers = {"Authorization": f"Bearer {rajesh_token}"}
 
+    # Amit Sharma login (AC & Appliance Repair)
+    r = requests.post(f"{API_URL}/auth/login", json={"email": "amit@purakam.in", "password": "partner123"})
+    assert r.status_code == 200, "Amit Sharma login failed"
+    amit_token = r.json()["access_token"]
+    amit_headers = {"Authorization": f"Bearer {amit_token}"}
+
     # 4. Turn Partner Online
     print("\n4. Toggling partner status to ONLINE...")
     r = requests.put(f"{API_URL}/partner/profile", json={"availability_status": True}, headers=part_headers)
@@ -222,21 +228,28 @@ def run_tests():
     assert srv1_booking["razorpay_signature"] == "sig_mock_123456"
     print("Razorpay payment verification check passed.")
 
-    # 6. Verify Proximity Filtering
-    print("\n6. Verifying proximity-based dispatching...")
-    # Vijay Shinde (Pune, near) should see it
+    # 6. Verify Category-Based Broadcasting (No Proximity Limits)
+    print("\n6. Verifying category-based broadcasting...")
+    # Vijay Shinde (Electrician) should see it
     r = requests.get(f"{API_URL}/partner/incoming-bookings", headers=vijay_headers)
     assert r.status_code == 200
     vijay_incoming = r.json()
-    assert any(b["id"] == pune_booking_id for b in vijay_incoming), "Vijay Shinde (Pune, near) should see the booking"
+    assert any(b["id"] == pune_booking_id for b in vijay_incoming), "Vijay Shinde (Electrician) should see the booking"
     print("Vijay Shinde can see the Pune booking (Success).")
 
-    # Rajesh Kumar (Noida, far) should NOT see it
+    # Rajesh Kumar (Electrician, far) should ALSO see it (no proximity limits)
     r = requests.get(f"{API_URL}/partner/incoming-bookings", headers=rajesh_headers)
     assert r.status_code == 200
     rajesh_incoming = r.json()
-    assert not any(b["id"] == pune_booking_id for b in rajesh_incoming), "Rajesh Kumar (Noida, far) should NOT see the booking"
-    print("Rajesh Kumar cannot see the Pune booking (Success).")
+    assert any(b["id"] == pune_booking_id for b in rajesh_incoming), "Rajesh Kumar (Electrician) should see the booking"
+    print("Rajesh Kumar can also see the Pune booking (Success - no proximity limits).")
+
+    # Amit Sharma (AC & Appliance Repair) should NOT see it (different category)
+    r = requests.get(f"{API_URL}/partner/incoming-bookings", headers=amit_headers)
+    assert r.status_code == 200
+    amit_incoming = r.json()
+    assert not any(b["id"] == pune_booking_id for b in amit_incoming), "Amit Sharma (AC & Appliance Repair) should NOT see the Electrician booking"
+    print("Amit Sharma cannot see the Electrician booking (Success - category filtering works).")
 
     # 7. Test Decline Endpoint
     print("\n7. Testing job decline endpoint...")

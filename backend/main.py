@@ -502,7 +502,7 @@ def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id
     # Get declined booking IDs
     declined_ids = [d.booking_id for d in db.query(PartnerDeclinedBooking).filter(PartnerDeclinedBooking.partner_id == user_id).all()]
     
-    # Return all requested bookings matching partner's service category
+    # Return all requested bookings matching partner's service category (category-wide broadcasting)
     bookings = db.query(Booking).filter(
         Booking.service_category == partner_profile.service_category,
         Booking.status == "requested"
@@ -513,49 +513,9 @@ def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id
         if b.id in declined_ids:
             continue
         
-        # Check area-based dispatch
-        is_in_area = False
-        
-        # 1. Coordinates check
-        if b.latitude is not None and b.longitude is not None and partner_user.latitude is not None and partner_user.longitude is not None:
-            dist = calculate_haversine_distance(
-                b.latitude, b.longitude,
-                partner_user.latitude, partner_user.longitude
-            )
-            if dist <= 30.0:
-                is_in_area = True
-        
-        # 2. Selected area_name check
-        if not is_in_area and b.area_name and partner_user.address:
-            b_area_lower = b.area_name.lower()
-            p_addr_lower = partner_user.address.lower()
-            if b_area_lower in p_addr_lower:
-                is_in_area = True
-            else:
-                # Check for significant keywords matching Mumbai regions
-                keywords = ["colaba", "dadar", "bandra", "andheri", "borivali", "ghatkopar", "powai", "thane", "navi mumbai"]
-                for kw in keywords:
-                    if kw in b_area_lower and kw in p_addr_lower:
-                        is_in_area = True
-                        break
-                
-        # 3. Fallback: address-based matching
-        if not is_in_area and not b.area_name:
-            b_addr = b.address.lower()
-            p_addr = (partner_user.address or "").lower()
-            cities = ["mumbai", "thane", "navi mumbai"]
-            for city in cities:
-                if city in b_addr and city in p_addr:
-                    is_in_area = True
-                    break
-            # If coordinates/area are missing, and cities are also not declared, allow by default for robustness
-            if not any(c in b_addr for c in cities) and not any(c in p_addr for c in cities):
-                is_in_area = True
-                
-        if is_in_area:
-            pydantic_b = schemas.BookingResponse.model_validate(b)
-            pydantic_b.otp = None
-            result.append(pydantic_b)
+        pydantic_b = schemas.BookingResponse.model_validate(b)
+        pydantic_b.otp = None
+        result.append(pydantic_b)
             
     return result
 
