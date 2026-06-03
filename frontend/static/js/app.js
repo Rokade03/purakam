@@ -195,6 +195,37 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         };
 
+        // Helper to upload attachments if any
+        const uploadBookingAttachments = async (bookingId) => {
+            const fileInput = document.getElementById("job_attachments");
+            if (fileInput && fileInput.files.length > 0) {
+                const formData = new FormData();
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append("files", fileInput.files[i]);
+                }
+                
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Uploading attachments...`;
+                if (window.lucide) lucide.createIcons();
+                
+                const uploadHeaders = {};
+                if (window.userSession && window.userSession.authToken) {
+                    uploadHeaders["Authorization"] = `Bearer ${window.userSession.authToken}`;
+                }
+                
+                const uploadRes = await fetch(`${API_URL}/bookings/${bookingId}/upload`, {
+                    method: "POST",
+                    headers: uploadHeaders,
+                    body: formData
+                });
+                
+                if (!uploadRes.ok) {
+                    const errData = await uploadRes.json();
+                    throw new Error(errData.detail || "Attachment upload failed");
+                }
+            }
+        };
+
         // Submit booking
         btnSubmit.addEventListener("click", async () => {
             const pincode = document.getElementById("pincode").value.trim();
@@ -214,13 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     showToast("Please enter a valid UPI ID (e.g. name@paytm).", "warning");
                     return;
                 }
-                
-                // Simulate payment gateway spinner
-                btnSubmit.disabled = true;
-                btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Verifying UPI Payment...`;
-                if (window.lucide) lucide.createIcons();
-                
-                await new Promise(resolve => setTimeout(resolve, 2000));
             }
 
             const coords = await getGeoCoordinates();
@@ -240,46 +264,96 @@ document.addEventListener("DOMContentLoaded", () => {
                 pincode: pincode
             };
 
+            // Set button to loading state
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Processing Booking...`;
+            if (window.lucide) lucide.createIcons();
+
             try {
+                // 1. Create booking in DB (starts as payment_status: pending)
                 const booking = await apiRequest("/bookings", {
                     method: "POST",
                     body: JSON.stringify(payload)
                 });
                 
-                // If attachments are uploaded, send files multipart post
-                const fileInput = document.getElementById("job_attachments");
-                if (fileInput && fileInput.files.length > 0) {
-                    const formData = new FormData();
-                    for (let i = 0; i < fileInput.files.length; i++) {
-                        formData.append("files", fileInput.files[i]);
-                    }
-                    
-                    btnSubmit.disabled = true;
-                    btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Uploading attachments...`;
+                if (method === "UPI") {
+                    // 2. Fetch Razorpay order details from backend
+                    btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Initializing Payment Gateway...`;
                     if (window.lucide) lucide.createIcons();
-                    
-                    const uploadHeaders = {};
-                    if (window.userSession && window.userSession.authToken) {
-                        uploadHeaders["Authorization"] = `Bearer ${window.userSession.authToken}`;
-                    }
-                    
-                    const uploadRes = await fetch(`${API_URL}/bookings/${booking.id}/upload`, {
-                        method: "POST",
-                        headers: uploadHeaders,
-                        body: formData
+
+                    const orderData = await apiRequest(`/bookings/${booking.id}/order`, {
+                        method: "POST"
                     });
-                    
-                    if (!uploadRes.ok) {
-                        const errData = await uploadRes.json();
-                        throw new Error(errData.detail || "Attachment upload failed");
-                    }
+
+                    // 3. Open Razorpay Checkout widget
+                    const options = {
+                        key: window.RAZORPAY_KEY_ID || orderData.key_id || "rzp_test_dummy_key_id",
+                        amount: orderData.amount,
+                        currency: "INR",
+                        name: "Servify",
+                        description: `${payload.service_category} Service Booking #${booking.id}`,
+                        order_id: orderData.order_id,
+                        handler: async function (response) {
+                            try {
+                                btnSubmit.disabled = true;
+                                btnSubmit.innerHTML = `<i data-lucide="loader" class="pulse"></i> Verifying Payment...`;
+                                if (window.lucide) lucide.createIcons();
+
+                                // Verify Razorpay signature on backend
+                                await apiRequest(`/bookings/${booking.id}/verify-payment`, {
+                                    method: "POST",
+                                    body: JSON.stringify({
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_signature: response.razorpay_signature
+                                    })
+                                });
+
+                                // Upload attachments if present
+                                await uploadBookingAttachments(booking.id);
+
+                                showToast("Payment verified & booking created!", "success");
+                                setTimeout(() => {
+                                    window.location.href = "/dashboard";
+                                }, 1000);
+                            } catch (err) {
+                                showToast(err.message || "Payment verification failed", "danger");
+                                btnSubmit.disabled = false;
+                                btnSubmit.innerHTML = `<i data-lucide="check"></i> Confirm & Book Now`;
+                                if (window.lucide) lucide.createIcons();
+                            }
+                        },
+                        modal: {
+                            ondismiss: function () {
+                                showToast("Payment checkout cancelled.", "warning");
+                                btnSubmit.disabled = false;
+                                btnSubmit.innerHTML = `<i data-lucide="check"></i> Confirm & Book Now`;
+                                if (window.lucide) lucide.createIcons();
+                            }
+                        },
+                        prefill: {
+                            name: window.userName || "",
+                            email: window.userEmail || "",
+                            contact: ""
+                        },
+                        theme: {
+                            color: "#6366f1"
+                        }
+                    };
+
+                    const rzp = new Razorpay(options);
+                    rzp.open();
+
+                } else {
+                    // For COD, just upload attachments and complete
+                    await uploadBookingAttachments(booking.id);
+                    showToast("Booking created successfully!", "success");
+                    setTimeout(() => {
+                        window.location.href = "/dashboard";
+                    }, 1000);
                 }
-                
-                showToast("Booking created successfully!", "success");
-                setTimeout(() => {
-                    window.location.href = "/dashboard";
-                }, 1000);
             } catch (err) {
+                showToast(err.message || "Failed to create booking", "danger");
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = `<i data-lucide="check"></i> Confirm & Book Now`;
                 if (window.lucide) lucide.createIcons();

@@ -19,7 +19,8 @@ def inject_backend_url():
     base_url = BACKEND_API_URL.rsplit("/api", 1)[0]
     return {
         "BACKEND_API_URL": BACKEND_API_URL,
-        "BACKEND_BASE_URL": base_url
+        "BACKEND_BASE_URL": base_url,
+        "RAZORPAY_KEY_ID": os.environ.get("RAZORPAY_KEY_ID", "rzp_test_dummy_key_id")
     }
 
 # === Web Routes ===

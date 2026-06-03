@@ -30,6 +30,21 @@ def seed_db():
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE bookings ADD COLUMN pincode VARCHAR(6);"))
             print("Migration: 'pincode' column added successfully.")
+        if 'razorpay_order_id' not in columns:
+            print("Migration: Adding missing 'razorpay_order_id' column to bookings table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN razorpay_order_id VARCHAR(255);"))
+            print("Migration: 'razorpay_order_id' column added successfully.")
+        if 'razorpay_payment_id' not in columns:
+            print("Migration: Adding missing 'razorpay_payment_id' column to bookings table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN razorpay_payment_id VARCHAR(255);"))
+            print("Migration: 'razorpay_payment_id' column added successfully.")
+        if 'razorpay_signature' not in columns:
+            print("Migration: Adding missing 'razorpay_signature' column to bookings table...")
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN razorpay_signature VARCHAR(255);"))
+            print("Migration: 'razorpay_signature' column added successfully.")
 
     if inspector.has_table('partner_profiles'):
         columns = [col['name'] for col in inspector.get_columns('partner_profiles')]

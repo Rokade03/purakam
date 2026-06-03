@@ -120,6 +120,9 @@ class BookingResponse(BaseModel):
     longitude: Optional[float] = None
     area_name: Optional[str] = None
     pincode: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
     accepted_at: Optional[datetime] = None
     created_at: datetime
     
@@ -130,6 +133,11 @@ class BookingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class RazorpayVerification(BaseModel):
+    razorpay_payment_id: str
+    razorpay_order_id: str
+    razorpay_signature: str
 
 class ChatMessageCreate(BaseModel):
     message_text: str = Field(..., min_length=1, max_length=1000)

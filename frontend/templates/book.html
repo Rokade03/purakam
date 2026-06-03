@@ -192,4 +192,10 @@
         }
     });
 </script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    window.RAZORPAY_KEY_ID = "{{ RAZORPAY_KEY_ID }}";
+    window.userEmail = "{{ session.get('user_email', '') }}";
+    window.userName = "{{ session.get('user_name', '') }}";
+</script>
 {% endblock %}

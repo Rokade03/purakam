@@ -90,6 +90,9 @@ class Booking(Base):
     longitude = Column(Float, nullable=True)
     area_name = Column(String, nullable=True)
     pincode = Column(String, nullable=True)
+    razorpay_order_id = Column(String, nullable=True)
+    razorpay_payment_id = Column(String, nullable=True)
+    razorpay_signature = Column(String, nullable=True)
     accepted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -188,6 +188,40 @@ def run_tests():
     assert len(pune_booking_otp) == 6, f"Expected 6-digit OTP, got {pune_booking_otp}"
     print(f"Pune Booking created (ID: #SRV{pune_booking_id}) with OTP: {pune_booking_otp}. Status: requested")
 
+    # Verify Razorpay order creation for this booking
+    print("Testing Razorpay order creation...")
+    r = requests.post(f"{API_URL}/bookings/{pune_booking_id}/order", headers=cust_headers)
+    assert r.status_code == 200, f"Expected 200 for order creation, got {r.status_code}: {r.text}"
+    order_data = r.json()
+    assert "order_id" in order_data, "Expected order_id in response"
+    assert "amount" in order_data, "Expected amount in response"
+    assert order_data["amount"] == 34900, f"Expected 34900 paise, got {order_data['amount']}"
+    mock_order_id = order_data["order_id"]
+    print("Razorpay order creation check passed.")
+
+    # Verify Razorpay payment verification
+    print("Testing Razorpay payment verification...")
+    verify_payload = {
+        "razorpay_payment_id": "pay_mock_123456",
+        "razorpay_order_id": mock_order_id,
+        "razorpay_signature": "sig_mock_123456"
+    }
+    r = requests.post(f"{API_URL}/bookings/{pune_booking_id}/verify-payment", json=verify_payload, headers=cust_headers)
+    assert r.status_code == 200, f"Expected 200 for payment verification, got {r.status_code}: {r.text}"
+    verify_data = r.json()
+    assert verify_data["status"] == "success"
+    
+    # Confirm booking in DB has updated payment status
+    r = requests.get(f"{API_URL}/bookings", headers=cust_headers)
+    assert r.status_code == 200
+    my_bookings = r.json()
+    srv1_booking = next(b for b in my_bookings if b["id"] == pune_booking_id)
+    assert srv1_booking["payment_status"] == "completed", "Expected payment_status to be completed after verification"
+    assert srv1_booking["razorpay_order_id"] == mock_order_id
+    assert srv1_booking["razorpay_payment_id"] == "pay_mock_123456"
+    assert srv1_booking["razorpay_signature"] == "sig_mock_123456"
+    print("Razorpay payment verification check passed.")
+
     # 6. Verify Proximity Filtering
     print("\n6. Verifying proximity-based dispatching...")
     # Vijay Shinde (Pune, near) should see it

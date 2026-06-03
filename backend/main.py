@@ -1,7 +1,13 @@
 import os
 import random
+import razorpay
 from fastapi import FastAPI, Depends, HTTPException, status, Header, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_dummy_key_id")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "dummy_secret")
+
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -369,7 +375,7 @@ def create_booking(
         status="requested",
         address=booking_data.address,
         payment_method=booking_data.payment_method,
-        payment_status="completed" if booking_data.payment_method == "UPI" else "pending",
+        payment_status="pending",
         otp=otp_code,
         latitude=booking_data.latitude,
         longitude=booking_data.longitude,
@@ -381,6 +387,86 @@ def create_booking(
     db.commit()
     db.refresh(new_booking)
     return new_booking
+
+@app.post("/api/bookings/{booking_id}/order")
+def create_razorpay_order(
+    booking_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.customer_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this booking")
+        
+    amount_paise = int(booking.price * 100)
+    
+    if RAZORPAY_KEY_ID == "rzp_test_dummy_key_id":
+        mock_order_id = f"order_mock_{booking_id}_{random.randint(1000, 9999)}"
+        booking.razorpay_order_id = mock_order_id
+        db.commit()
+        return {
+            "order_id": mock_order_id,
+            "amount": amount_paise,
+            "key_id": RAZORPAY_KEY_ID
+        }
+        
+    try:
+        order_data = {
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": f"receipt_booking_{booking_id}",
+            "payment_capture": 1
+        }
+        order = razorpay_client.order.create(data=order_data)
+        booking.razorpay_order_id = order["id"]
+        db.commit()
+        return {
+            "order_id": order["id"],
+            "amount": amount_paise,
+            "key_id": RAZORPAY_KEY_ID
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Razorpay order creation failed: {str(e)}")
+
+@app.post("/api/bookings/{booking_id}/verify-payment")
+def verify_razorpay_payment(
+    booking_id: int,
+    verification: schemas.RazorpayVerification,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.customer_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this booking")
+        
+    if RAZORPAY_KEY_ID == "rzp_test_dummy_key_id":
+        if verification.razorpay_order_id != booking.razorpay_order_id:
+            raise HTTPException(status_code=400, detail="Invalid order ID signature")
+        booking.payment_status = "completed"
+        booking.razorpay_payment_id = verification.razorpay_payment_id
+        booking.razorpay_signature = verification.razorpay_signature
+        db.commit()
+        return {"status": "success", "message": "Payment verified (mocked)"}
+        
+    try:
+        param_dict = {
+            'razorpay_order_id': verification.razorpay_order_id,
+            'razorpay_payment_id': verification.razorpay_payment_id,
+            'razorpay_signature': verification.razorpay_signature
+        }
+        razorpay_client.utility.verify_payment_signature(param_dict)
+        
+        booking.payment_status = "completed"
+        booking.razorpay_payment_id = verification.razorpay_payment_id
+        booking.razorpay_signature = verification.razorpay_signature
+        db.commit()
+        return {"status": "success", "message": "Payment verified successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Payment signature verification failed: {str(e)}")
 
 @app.get("/api/bookings", response_model=List[schemas.BookingResponse])
 def get_bookings(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
