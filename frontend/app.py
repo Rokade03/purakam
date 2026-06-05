@@ -278,7 +278,148 @@ def register():
             
     return render_template("register.html", categories=categories)
 
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+
+@app.route("/login/google")
+def login_google():
+    next_page = request.args.get("next", "")
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        # Redirect to mock consent page
+        return redirect(url_for("login_google_mock", next=next_page))
+    
+    import secrets
+    state = secrets.token_hex(16)
+    session["oauth_state"] = state
+    session["oauth_next"] = next_page
+    
+    # Construct Google OAuth Authorization URL
+    redirect_uri = url_for("login_google_callback", _external=True)
+    google_auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"response_type=code&"
+        f"client_id={GOOGLE_CLIENT_ID}&"
+        f"redirect_uri={redirect_uri}&"
+        f"scope=openid%20email%20profile&"
+        f"state={state}"
+    )
+    return redirect(google_auth_url)
+
+@app.route("/login/google/callback")
+def login_google_callback():
+    state = request.args.get("state")
+    code = request.args.get("code")
+    
+    # Verify state to prevent CSRF
+    if not state or state != session.pop("oauth_state", None):
+        flash("Invalid state token. Possible CSRF attack detected.", "danger")
+        return redirect(url_for("login"))
+        
+    if not code:
+        flash("Authorization code not returned from Google.", "danger")
+        return redirect(url_for("login"))
+        
+    # Exchange code for access token
+    redirect_uri = url_for("login_google_callback", _external=True)
+    token_url = "https://oauth2.googleapis.com/token"
+    payload = {
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code"
+    }
+    
+    try:
+        token_res = requests.post(token_url, data=payload)
+        if token_res.status_code != 200:
+            flash(f"Failed to exchange code: {token_res.text}", "danger")
+            return redirect(url_for("login"))
+            
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        
+        # Get user info
+        userinfo_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+        userinfo_res = requests.get(userinfo_url, headers={"Authorization": f"Bearer {access_token}"})
+        if userinfo_res.status_code != 200:
+            flash("Failed to retrieve user info from Google.", "danger")
+            return redirect(url_for("login"))
+            
+        user_info = userinfo_res.json()
+        email = user_info.get("email")
+        name = user_info.get("name", "Google User")
+        
+        # Call backend to register/login Google user
+        r = requests.post(
+            f"{BACKEND_API_URL}/auth/google",
+            json={"email": email, "name": name}
+        )
+        if r.status_code == 200:
+            user_data = r.json()
+            session["user_id"] = user_data["id"]
+            session["user_name"] = user_data["name"]
+            session["user_email"] = user_data["email"]
+            session["user_role"] = user_data["role"]
+            session["user_address"] = user_data.get("address")
+            session["auth_token"] = user_data.get("access_token")
+            
+            flash(f"Welcome, {user_data['name']} (signed in with Google)!", "success")
+            next_page = session.pop("oauth_next", None)
+            if next_page:
+                return redirect(next_page)
+            if user_data["role"] == "partner":
+                return redirect(url_for("partner_dashboard"))
+            return redirect(url_for("dashboard"))
+        else:
+            error_msg = r.json().get("detail", "Google authentication failed")
+            flash(error_msg, "danger")
+    except Exception as e:
+        flash(f"Google OAuth error: {e}", "danger")
+        
+    return redirect(url_for("login"))
+
+@app.route("/login/google/mock", methods=["GET", "POST"])
+def login_google_mock():
+    next_page = request.args.get("next", "")
+    if request.method == "POST":
+        email = request.form.get("email")
+        name = request.form.get("name")
+        
+        if not email or "@" not in email:
+            flash("Please enter a valid mock email address.", "danger")
+            return render_template("mock_google_consent.html", next=next_page)
+            
+        try:
+            r = requests.post(
+                f"{BACKEND_API_URL}/auth/google",
+                json={"email": email, "name": name}
+            )
+            if r.status_code == 200:
+                user_data = r.json()
+                session["user_id"] = user_data["id"]
+                session["user_name"] = user_data["name"]
+                session["user_email"] = user_data["email"]
+                session["user_role"] = user_data["role"]
+                session["user_address"] = user_data.get("address")
+                session["auth_token"] = user_data.get("access_token")
+                
+                flash(f"Welcome, {user_data['name']} (signed in with Mock Google)!", "success")
+                if next_page:
+                    return redirect(next_page)
+                if user_data["role"] == "partner":
+                    return redirect(url_for("partner_dashboard"))
+                return redirect(url_for("dashboard"))
+            else:
+                error_msg = r.json().get("detail", "Mock Google login failed")
+                flash(error_msg, "danger")
+        except Exception as e:
+            flash(f"Mock Google login error: {e}", "danger")
+            
+    return render_template("mock_google_consent.html", next=next_page)
+
 @app.route("/logout")
+
 def logout():
     session.clear()
     flash("You have been logged out successfully.", "info")

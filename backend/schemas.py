@@ -6,6 +6,11 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class GoogleUserLogin(BaseModel):
+    email: EmailStr
+    name: str
+
+
 class UserCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=50)
     email: EmailStr

@@ -237,6 +237,29 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
     user.access_token = token
     return user
 
+@app.post("/api/auth/google", response_model=schemas.UserResponse)
+def login_with_google(google_data: schemas.GoogleUserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == google_data.email).first()
+    if not user:
+        # Create a new user with placeholder details
+        import secrets
+        random_password = secrets.token_hex(16)
+        user = User(
+            name=google_data.name,
+            email=google_data.email,
+            password_hash=hash_password(random_password),
+            phone="0000000000",
+            role="customer"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
+    token = create_access_token(user.id, user.role)
+    user.access_token = token
+    return user
+
+
 @app.get("/api/auth/me", response_model=schemas.UserResponse)
 def get_me(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
