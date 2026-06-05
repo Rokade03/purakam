@@ -31,7 +31,12 @@
             </div>
 
             <div class="form-group">
-                <label for="address">Full Address / Location (Mumbai Only)</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <label for="address" style="margin-bottom: 0;">Full Address / Location (Mumbai Only)</label>
+                    <button type="button" id="btn-get-location" class="chat-launcher-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: var(--border-radius-sm); font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="fetchCurrentLocationAddress(this)">
+                        <i data-lucide="map-pin" style="width: 12px; height: 12px;"></i> Use Current Location
+                    </button>
+                </div>
                 <input type="text" id="address" name="address" class="form-input" placeholder="Flat No., Street, Locality, Mumbai/Thane/Navi Mumbai" required>
             </div>
 

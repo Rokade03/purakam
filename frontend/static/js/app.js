@@ -174,6 +174,13 @@ document.addEventListener("DOMContentLoaded", () => {
         // Helper to get geolocation or default mock Koregaon Park coordinates
         const getGeoCoordinates = () => {
             return new Promise((resolve) => {
+                if (window.bookingLatitude && window.bookingLongitude) {
+                    resolve({
+                        latitude: window.bookingLatitude,
+                        longitude: window.bookingLongitude
+                    });
+                    return;
+                }
                 if (!navigator.geolocation) {
                     console.log("Geolocation not supported. Using default Bandra, Mumbai coordinates.");
                     resolve({ latitude: 19.0600, longitude: 72.8258 });
@@ -996,6 +1003,114 @@ if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initMobileMenu);
 } else {
     initMobileMenu();
+}
+
+// Global Helper: fetch browser location coordinates & geocode to Indian address
+async function fetchCurrentLocationAddress(buttonEl) {
+    const addressInput = document.getElementById("address");
+    const areaSelect = document.getElementById("area_name");
+    const pincodeInput = document.getElementById("pincode");
+    
+    if (!navigator.geolocation) {
+        showToast("Geolocation is not supported by your browser.", "danger");
+        return;
+    }
+    
+    const originalHTML = buttonEl.innerHTML;
+    buttonEl.disabled = true;
+    buttonEl.innerHTML = `<i data-lucide="loader" class="pulse" style="width: 12px; height: 12px; vertical-align: middle;"></i> Locating...`;
+    if (window.lucide) lucide.createIcons();
+    
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            
+            // Cache globally to avoid re-triggering prompt during submission
+            window.bookingLatitude = lat;
+            window.bookingLongitude = lon;
+            
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`, {
+                    headers: {
+                        'Accept-Language': 'en',
+                        'User-Agent': 'PurakamApp/1.0'
+                    }
+                });
+                if (!response.ok) throw new Error("Reverse geocoding lookup failed.");
+                
+                const data = await response.json();
+                const addressObj = data.address || {};
+                
+                // Construct readable street address
+                const parts = [];
+                if (addressObj.house_number || addressObj.building) parts.push(addressObj.house_number || addressObj.building);
+                if (addressObj.road) parts.push(addressObj.road);
+                if (addressObj.suburb || addressObj.neighbourhood) parts.push(addressObj.suburb || addressObj.neighbourhood);
+                if (addressObj.city_district) parts.push(addressObj.city_district);
+                if (addressObj.city || addressObj.town || addressObj.village) parts.push(addressObj.city || addressObj.town || addressObj.village);
+                if (addressObj.state) parts.push(addressObj.state);
+                if (addressObj.postcode) parts.push(addressObj.postcode);
+                
+                const formattedAddress = parts.join(", ");
+                if (addressInput) {
+                    addressInput.value = formattedAddress;
+                }
+                
+                // Autofill Pincode
+                if (pincodeInput && addressObj.postcode) {
+                    pincodeInput.value = addressObj.postcode;
+                    pincodeInput.dispatchEvent(new Event('input'));
+                }
+                
+                // Auto-select Mumbai Region Dropdown
+                if (areaSelect) {
+                    const cityStr = (addressObj.city || addressObj.city_district || addressObj.suburb || "").toLowerCase();
+                    const suburbStr = (addressObj.suburb || addressObj.neighbourhood || "").toLowerCase();
+                    
+                    if (suburbStr.includes("bandra") || suburbStr.includes("khar") || suburbStr.includes("santa cruz")) {
+                        areaSelect.value = "Bandra & Western Suburbs";
+                    } else if (suburbStr.includes("andheri") || suburbStr.includes("juhu") || suburbStr.includes("vile parle")) {
+                        areaSelect.value = "Andheri & Western Suburbs";
+                    } else if (suburbStr.includes("colaba") || suburbStr.includes("fort") || suburbStr.includes("marine lines")) {
+                        areaSelect.value = "Colaba & South Mumbai";
+                    } else if (suburbStr.includes("dadar") || suburbStr.includes("prabhadevi") || suburbStr.includes("parel")) {
+                        areaSelect.value = "Dadar & Central Mumbai";
+                    } else if (suburbStr.includes("borivali") || suburbStr.includes("malad") || suburbStr.includes("kandivali")) {
+                        areaSelect.value = "Borivali & Northern Suburbs";
+                    } else if (suburbStr.includes("ghatkopar") || suburbStr.includes("kurla") || suburbStr.includes("vikhroli")) {
+                        areaSelect.value = "Ghatkopar & Eastern Suburbs";
+                    } else if (suburbStr.includes("powai") || suburbStr.includes("chandivali")) {
+                        areaSelect.value = "Powai & East Mumbai";
+                    } else if (cityStr.includes("thane") || suburbStr.includes("thane")) {
+                        areaSelect.value = "Thane";
+                    } else if (cityStr.includes("navi mumbai") || suburbStr.includes("navi mumbai") || cityStr.includes("panvel")) {
+                        areaSelect.value = "Navi Mumbai";
+                    }
+                }
+                
+                showToast("Current location retrieved successfully!", "success");
+            } catch (err) {
+                console.error("Reverse geocoding error:", err);
+                if (addressInput) {
+                    addressInput.value = `Location: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                }
+                showToast("Could not lookup full text address. Saved coordinate backup.", "warning");
+            } finally {
+                buttonEl.disabled = false;
+                buttonEl.innerHTML = originalHTML;
+                if (window.lucide) lucide.createIcons();
+            }
+        },
+        (error) => {
+            console.error("Geolocation fetch error:", error);
+            showToast("Could not access browser location. Please check settings/permissions.", "danger");
+            buttonEl.disabled = false;
+            buttonEl.innerHTML = originalHTML;
+            if (window.lucide) lucide.createIcons();
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+    );
 }
 
 

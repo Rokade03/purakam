@@ -49,7 +49,12 @@
                 <h3 style="margin-bottom: 1.5rem;"><i data-lucide="map-pin" style="color: var(--primary); vertical-align: middle;"></i> Service Location & Details</h3>
                 
                 <div class="form-group">
-                    <label for="address">Full Doorstep Address</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label for="address" style="margin-bottom: 0;">Full Doorstep Address</label>
+                        <button type="button" id="btn-get-location" class="chat-launcher-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: var(--border-radius-sm); font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="fetchCurrentLocationAddress(this)">
+                            <i data-lucide="map-pin" style="width: 12px; height: 12px;"></i> Use Current Location
+                        </button>
+                    </div>
                     <textarea id="address" class="form-input" placeholder="Flat / House No., Building Name, Street Name, Landmark, City, State - PIN Code" required>{{ session.get('user_address', '') or '' }}</textarea>
                 </div>
 
