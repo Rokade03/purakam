@@ -8,4 +8,7 @@ backend/uploads/
 .system_generated/
 venv/
 env/
+node_modules/
+.DS_Store
 *.log
+
