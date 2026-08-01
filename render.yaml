@@ -29,10 +29,10 @@ services:
     startCommand: gunicorn frontend.app:app
     envVars:
       - key: BACKEND_API_URL
-        # In Render, this service can query the backend using the internal host or external host.
-        # Let's set it to the external URL. Note: If the name 'purakam-backend' is taken on Render,
-        # Render will append a suffix (e.g. purakam-backend-1234). In that case, you can update
-        # this variable in the Render Dashboard after the initial deploy.
-        value: https://purakam-backend.onrender.com/api
+        fromService:
+          type: web
+          name: purakam-backend
+          property: host
       - key: PYTHON_VERSION
         value: 3.10.8
+

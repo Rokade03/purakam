@@ -5,7 +5,12 @@ import requests
 app = Flask(__name__)
 app.secret_key = "purakam_super_secret_session_key_for_india_market"
 
-BACKEND_API_URL = os.environ.get("BACKEND_API_URL", "http://127.0.0.1:8000/api")
+BACKEND_API_URL = os.environ.get("BACKEND_API_URL", "http://127.0.0.1:8000/api").strip()
+if BACKEND_API_URL and not BACKEND_API_URL.startswith("http://") and not BACKEND_API_URL.startswith("https://"):
+    BACKEND_API_URL = f"https://{BACKEND_API_URL}"
+if BACKEND_API_URL and not BACKEND_API_URL.endswith("/api"):
+    BACKEND_API_URL = f"{BACKEND_API_URL.rstrip('/')}/api"
+
 
 # Helper to get request headers for backend
 def get_auth_headers():
