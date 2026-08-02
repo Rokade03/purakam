@@ -55,9 +55,14 @@ from email.mime.multipart import MIMEMultipart
 
 def send_email_otp(to_email: str, otp_code: str):
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    smtp_user = os.environ.get("SMTP_USER", "")
-    smtp_password = os.environ.get("SMTP_PASSWORD", "")
+    smtp_port_str = os.environ.get("SMTP_PORT", "465")
+    try:
+        smtp_port = int(smtp_port_str)
+    except ValueError:
+        smtp_port = 465
+
+    smtp_user = os.environ.get("SMTP_USER", "").strip()
+    smtp_password = os.environ.get("SMTP_PASSWORD", "").replace(" ", "").strip()
     
     if not smtp_user or not smtp_password:
         print(f"📧 [DEV SANDBOX MODE] No SMTP credentials configured. OTP Code for {to_email} is {otp_code}")
@@ -85,17 +90,62 @@ def send_email_otp(to_email: str, otp_code: str):
         """
         msg.attach(MIMEText(html_content, "html"))
         
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to_email, msg.as_string())
-        print(f"✅ Real email successfully sent to {to_email}")
-        return True
+        # Try SSL port 465 first, fallback to TLS port 587
+        if smtp_port == 465:
+            try:
+                with smtplib.SMTP_SSL(smtp_server, 465, timeout=12) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.sendmail(smtp_user, to_email, msg.as_string())
+                print(f"✅ Real email successfully sent to {to_email} via SSL 465")
+                return True
+            except Exception as ssl_err:
+                print(f"SSL 465 failed ({ssl_err}), trying TLS 587...")
+                with smtplib.SMTP(smtp_server, 587, timeout=12) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.sendmail(smtp_user, to_email, msg.as_string())
+                print(f"✅ Real email successfully sent to {to_email} via TLS 587")
+                return True
+        else:
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=12) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, to_email, msg.as_string())
+            print(f"✅ Real email successfully sent to {to_email} via port {smtp_port}")
+            return True
+
     except Exception as e:
         print(f"❌ Failed to send real email to {to_email}: {e}")
         return False
 
 app = FastAPI(title="Purakam API Backend", version="1.0.0")
+
+@app.get("/api/auth/test-smtp")
+def test_smtp():
+    smtp_user = os.environ.get("SMTP_USER", "").strip()
+    smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = os.environ.get("SMTP_PORT", "465")
+
+    if not smtp_user or not smtp_password:
+        return {
+            "status": "SANDBOX_MODE",
+            "message": "SMTP_USER or SMTP_PASSWORD environment variable is missing on server.",
+            "smtp_user_configured": bool(smtp_user),
+            "smtp_password_configured": bool(smtp_password)
+        }
+
+    # Attempt test email sending to admin / test address
+    test_code = "999999"
+    success = send_email_otp(smtp_user, test_code)
+    return {
+        "status": "SUCCESS" if success else "FAILED",
+        "smtp_server": smtp_server,
+        "smtp_port": smtp_port,
+        "smtp_user": smtp_user,
+        "message": "Test email sent successfully to " + smtp_user if success else "Failed to send email. Check Render server logs for exact error details."
+    }
+
 
 
 # Setup upload directory
