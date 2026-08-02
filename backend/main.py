@@ -49,9 +49,54 @@ def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: fl
     a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
     c = 2 * math.asin(math.sqrt(a))
     
-    return R * c
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email_otp(to_email: str, otp_code: str):
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_password = os.environ.get("SMTP_PASSWORD", "")
+    
+    if not smtp_user or not smtp_password:
+        print(f"📧 [DEV SANDBOX MODE] No SMTP credentials configured. OTP Code for {to_email} is {otp_code}")
+        return False
+        
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Your Purakam Verification Code: {otp_code}"
+        msg["From"] = f"Purakam Services <{smtp_user}>"
+        msg["To"] = to_email
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #ffffff;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #111827; margin: 0; font-size: 24px;">Purakam</h1>
+                <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Household Services Platform</p>
+            </div>
+            <h2 style="color: #111827; font-size: 18px;">Verify Your Email Address</h2>
+            <p style="color: #4b5563; line-height: 1.5;">Thank you for registering with Purakam! Please enter the 6-digit OTP verification code below to complete your registration:</p>
+            <div style="font-size: 32px; font-weight: bold; color: #22c55e; letter-spacing: 6px; padding: 16px; background: #f3f4f6; border-radius: 12px; text-align: center; margin: 24px 0;">
+                {otp_code}
+            </div>
+            <p style="color: #6b7280; font-size: 13px; line-height: 1.4;">This code will expire in 15 minutes. If you did not register for Purakam, please ignore this email.</p>
+        </div>
+        """
+        msg.attach(MIMEText(html_content, "html"))
+        
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        print(f"✅ Real email successfully sent to {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send real email to {to_email}: {e}")
+        return False
 
 app = FastAPI(title="Purakam API Backend", version="1.0.0")
+
 
 # Setup upload directory
 UPLOAD_DIR = "backend/uploads"
@@ -225,10 +270,11 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
 
-    print(f"📧 [EMAIL SERVICE] Sent Verification OTP Code {otp_code} to {new_user.email}")
+    send_email_otp(new_user.email, otp_code)
     token = create_access_token(new_user.id, new_user.role)
     new_user.access_token = token
     return new_user
+
 
 @app.post("/api/auth/verify-email", response_model=schemas.UserResponse)
 def verify_email(req: schemas.VerifyEmailRequest, db: Session = Depends(get_db)):
@@ -288,8 +334,9 @@ def resend_verification(req: schemas.ResendVerificationRequest, db: Session = De
     user.verification_code_expires_at = expires_at
     db.commit()
 
-    print(f"📧 [EMAIL SERVICE] Resent Verification OTP Code {otp_code} to {user.email}")
+    send_email_otp(user.email, otp_code)
     return {"message": "New verification code sent to your email", "verification_code": otp_code}
+
 
 @app.post("/api/auth/login", response_model=schemas.UserResponse)
 def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
