@@ -145,18 +145,13 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Validate address is within Mumbai MMR region
+    # Validate address presence
     if not user_data.address or not user_data.address.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Address is required"
         )
-    address_lower = user_data.address.lower()
-    if not any(city in address_lower for city in ["mumbai", "thane", "navi mumbai"]):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Registrations are restricted to Mumbai and its metropolitan areas (Thane, Navi Mumbai)."
-        )
+
 
     # Generate 6-digit OTP verification code
     import random
