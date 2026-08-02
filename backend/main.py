@@ -1,8 +1,9 @@
 import os
 import random
 import razorpay
-from fastapi import FastAPI, Depends, HTTPException, status, Header, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, status, Header, File, UploadFile, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+
 
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_dummy_key_id")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "dummy_secret")
@@ -159,8 +160,50 @@ def send_email_otp(to_email: str, otp_code: str):
     except Exception as e:
         return False, str(e)
 
+def send_booking_confirmation_email(customer_email: str, customer_name: str, service_name: str, date_str: str, time_slot: str, otp_code: str):
+    resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #111827; margin: 0; font-size: 24px;">Purakam</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Service Booking Confirmed!</p>
+        </div>
+        <h2 style="color: #111827; font-size: 18px;">Hello {customer_name},</h2>
+        <p style="color: #4b5563; line-height: 1.5;">Your service booking for <strong>{service_name}</strong> on <strong>{date_str} ({time_slot})</strong> has been placed successfully.</p>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 18px; text-align: center; margin: 24px 0;">
+            <p style="color: #166534; font-weight: 700; margin: 0 0 8px 0; font-size: 13px; letter-spacing: 0.5px;">WORK VERIFICATION OTP</p>
+            <div style="font-size: 34px; font-weight: 800; color: #15803d; letter-spacing: 6px;">
+                {otp_code}
+            </div>
+            <p style="color: #166534; font-size: 12px; margin: 10px 0 0 0; line-height: 1.4;">Share this OTP code with your assigned service partner ONLY when they arrive at your doorstep to start the work.</p>
+        </div>
+    </div>
+    """
+
+    if resend_api_key:
+        try:
+            import requests
+            requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "from": "Purakam <onboarding@resend.dev>",
+                    "to": [customer_email],
+                    "subject": f"Purakam Booking Confirmed - Work OTP: {otp_code}",
+                    "html": html_content
+                },
+                timeout=10
+            )
+            print(f"✅ Booking confirmation & OTP email sent to {customer_email}")
+        except Exception as e:
+            print(f"Failed sending booking OTP email: {e}")
 
 app = FastAPI(title="Purakam API Backend", version="1.0.0")
+
 
 @app.get("/api/auth/test-smtp")
 def test_smtp():
@@ -271,7 +314,8 @@ def get_current_admin_id(authorization: Optional[str] = Header(None), db: Sessio
 # === Auth Routes ===
 
 @app.post("/api/auth/register", response_model=schemas.UserResponse)
-def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+
     # Check if user email already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -359,13 +403,13 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
         db.add(new_partner)
         db.refresh(new_user)
 
-    sent, _ = send_email_otp(new_user.email, otp_code)
+    background_tasks.add_task(send_email_otp, new_user.email, otp_code)
     token = create_access_token(new_user.id, new_user.role)
 
     new_user.access_token = token
-    if sent:
-        new_user.verification_code = None
+    new_user.verification_code = None
     return new_user
+
 
 @app.post("/api/auth/verify-email", response_model=schemas.UserResponse)
 def verify_email(req: schemas.VerifyEmailRequest, db: Session = Depends(get_db)):
@@ -405,7 +449,7 @@ def verify_email(req: schemas.VerifyEmailRequest, db: Session = Depends(get_db))
     return user
 
 @app.post("/api/auth/resend-verification")
-def resend_verification(req: schemas.ResendVerificationRequest, db: Session = Depends(get_db)):
+def resend_verification(req: schemas.ResendVerificationRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user:
         raise HTTPException(
@@ -425,11 +469,9 @@ def resend_verification(req: schemas.ResendVerificationRequest, db: Session = De
     user.verification_code_expires_at = expires_at
     db.commit()
 
-    sent, _ = send_email_otp(user.email, otp_code)
-    res = {"message": "New verification code sent to your email"}
-    if not sent:
-        res["verification_code"] = otp_code
-    return res
+    background_tasks.add_task(send_email_otp, user.email, otp_code)
+    return {"message": "New verification code sent to your email"}
+
 
 
 
@@ -562,6 +604,7 @@ def check_and_expire_bookings(db: Session):
 @app.post("/api/bookings", response_model=schemas.BookingResponse)
 def create_booking(
     booking_data: schemas.BookingCreate, 
+    background_tasks: BackgroundTasks,
     customer_id: int = Depends(get_current_user_id), 
     db: Session = Depends(get_db)
 ):
@@ -627,7 +670,22 @@ def create_booking(
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
+
+    # Send booking confirmation email with Work OTP in background thread
+    customer = db.query(User).filter(User.id == customer_id).first()
+    if customer and customer.email:
+        background_tasks.add_task(
+            send_booking_confirmation_email,
+            customer.email,
+            customer.name,
+            new_booking.service_category,
+            new_booking.booking_date,
+            new_booking.time_slot,
+            otp_code
+        )
+
     return new_booking
+
 
 @app.post("/api/bookings/{booking_id}/order")
 def create_razorpay_order(
