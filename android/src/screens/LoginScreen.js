@@ -18,6 +18,10 @@ import { getErrorMessage } from '../api/client';
 import { useTheme, SIZES, SHADOW } from '../theme';
 import { useNotificationStore } from '../stores/notificationStore';
 import { googleLogin } from '../api/auth/authApi';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -31,11 +35,53 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Google OAuth Hook
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '',
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
+  });
+
   // Mock Google Consent states
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleName, setGoogleName] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        setIsGoogleLoading(true);
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${authentication.accessToken}` },
+        })
+          .then((res) => res.json())
+          .then(async (googleUser) => {
+            if (googleUser.email) {
+              const userData = await googleLogin(googleUser.email, googleUser.name || 'Google User');
+              await signIn(userData);
+              showToast('success', 'Logged In', `Welcome, ${userData.name} (signed in with Google)!`);
+            }
+          })
+          .catch((err) => {
+            showToast('error', 'Google Auth Error', err.message);
+          })
+          .finally(() => setIsGoogleLoading(false));
+      }
+    }
+  }, [response]);
+
+  const handleGooglePress = () => {
+    if (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      promptAsync();
+    } else {
+      setGoogleEmail('');
+      setGoogleName('');
+      setShowGoogleModal(true);
+    }
+  };
+
 
   const handleGoogleSubmit = async () => {
     if (!googleEmail || !googleEmail.includes('@')) {
@@ -151,12 +197,9 @@ export default function LoginScreen({ navigation }) {
 
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => {
-                setGoogleEmail('');
-                setGoogleName('');
-                setShowGoogleModal(true);
-              }}
+              onPress={handleGooglePress}
             >
+
               <FontAwesome5 name="google" size={16} color={colors.primary} />
               <Text style={styles.googleText}>Sign in with Google</Text>
             </TouchableOpacity>
