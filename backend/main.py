@@ -158,14 +158,23 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
             detail="Registrations are restricted to Mumbai and its metropolitan areas (Thane, Navi Mumbai)."
         )
 
-    # Create new User
+    # Generate 6-digit OTP verification code
+    import random
+    from datetime import datetime, timedelta
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    # Create new User (is_verified = False for new registrations)
     new_user = User(
         name=user_data.name,
         email=user_data.email,
         password_hash=hash_password(user_data.password),
         phone=user_data.phone,
         address=user_data.address,
-        role=user_data.role
+        role=user_data.role,
+        is_verified=False,
+        verification_code=otp_code,
+        verification_code_expires_at=expires_at
     )
     db.add(new_user)
     db.commit()
@@ -221,9 +230,71 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
 
+    print(f"📧 [EMAIL SERVICE] Sent Verification OTP Code {otp_code} to {new_user.email}")
     token = create_access_token(new_user.id, new_user.role)
     new_user.access_token = token
     return new_user
+
+@app.post("/api/auth/verify-email", response_model=schemas.UserResponse)
+def verify_email(req: schemas.VerifyEmailRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found with this email"
+        )
+    
+    if user.is_verified:
+        token = create_access_token(user.id, user.role)
+        user.access_token = token
+        return user
+
+    if not user.verification_code or user.verification_code != req.code.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid 6-digit verification code"
+        )
+    
+    from datetime import datetime
+    if user.verification_code_expires_at and datetime.utcnow() > user.verification_code_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired. Please request a new code."
+        )
+
+    user.is_verified = True
+    user.verification_code = None
+    user.verification_code_expires_at = None
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(user.id, user.role)
+    user.access_token = token
+    return user
+
+@app.post("/api/auth/resend-verification")
+def resend_verification(req: schemas.ResendVerificationRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found with this email"
+        )
+    
+    if user.is_verified:
+        return {"message": "Email is already verified"}
+
+    import random
+    from datetime import datetime, timedelta
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    user.verification_code = otp_code
+    user.verification_code_expires_at = expires_at
+    db.commit()
+
+    print(f"📧 [EMAIL SERVICE] Resent Verification OTP Code {otp_code} to {user.email}")
+    return {"message": "New verification code sent to your email", "verification_code": otp_code}
 
 @app.post("/api/auth/login", response_model=schemas.UserResponse)
 def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
@@ -233,9 +304,17 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
+    
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="EMAIL_NOT_VERIFIED"
+        )
+
     token = create_access_token(user.id, user.role)
     user.access_token = token
     return user
+
 
 @app.post("/api/auth/google", response_model=schemas.UserResponse)
 def login_with_google(google_data: schemas.GoogleUserLogin, db: Session = Depends(get_db)):
@@ -249,8 +328,10 @@ def login_with_google(google_data: schemas.GoogleUserLogin, db: Session = Depend
             email=google_data.email,
             password_hash=hash_password(random_password),
             phone="0000000000",
-            role="customer"
+            role="customer",
+            is_verified=True
         )
+
         db.add(user)
         db.commit()
         db.refresh(user)

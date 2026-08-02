@@ -100,7 +100,6 @@ const useAuthStore = create((set, get) => {
       set({ isLoading: true, error: null });
       try {
         const data = await authApi.register(payload);
-        await get().signIn(data);
         return data;
       } catch (error) {
         const message = getErrorMessage(error, 'Registration failed');
@@ -110,7 +109,23 @@ const useAuthStore = create((set, get) => {
         set({ isLoading: false });
       }
     },
+
+    verifyEmail: async (email, code) => {
+      set({ isLoading: true, error: null });
+      try {
+        const data = await authApi.verifyEmail(email, code);
+        await get().signIn(data);
+        return data;
+      } catch (error) {
+        const message = getErrorMessage(error, 'Verification failed');
+        set({ error: message });
+        throw error;
+      } finally {
+        set({ isLoading: false });
+      }
+    },
   };
 });
+
 
 export default useAuthStore;

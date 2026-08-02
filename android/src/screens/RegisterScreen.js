@@ -70,9 +70,15 @@ export default function RegisterScreen({ navigation }) {
     }
 
     try {
-      await register(payload);
-      showToast('success', 'Account Created', 'Your registration was completed successfully.');
+      const data = await register(payload);
+      showToast('info', 'Verification OTP Sent', 'Please enter the 6-digit verification code sent to your email.');
+      navigation.navigate('VerifyEmail', {
+        email: data.email,
+        code: data.verification_code,
+        role: data.role,
+      });
     } catch (error) {
+
       showToast('error', 'Registration Error', getErrorMessage(error, 'Registration failed'));
     }
   };

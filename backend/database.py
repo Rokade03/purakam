@@ -36,7 +36,11 @@ class User(Base):
     address = Column(String, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    is_verified = Column(Boolean, default=True)  # Default True for existing users, False for new registrations
+    verification_code = Column(String, nullable=True)
+    verification_code_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
     # Relationships
     partner_profile = relationship("PartnerProfile", back_populates="user", uselist=False)

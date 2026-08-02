@@ -71,9 +71,16 @@ export default function LoginScreen({ navigation }) {
       await login(email, password);
       showToast('success', 'Logged In', 'Welcome back to Purakam!');
     } catch (error) {
+      const detail = error?.response?.data?.detail;
+      if (detail === 'EMAIL_NOT_VERIFIED') {
+        showToast('info', 'Verification Required', 'Your email address is not verified yet. Please enter the OTP code.');
+        navigation.navigate('VerifyEmail', { email });
+        return;
+      }
       showToast('error', 'Login Failed', getErrorMessage(error, 'Login failed'));
     }
   };
+
 
   return (
     <SafeAreaView

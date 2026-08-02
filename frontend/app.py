@@ -232,7 +232,11 @@ def login():
                 return redirect(url_for("dashboard"))
             else:
                 error_msg = r.json().get("detail", "Login failed")
+                if error_msg == "EMAIL_NOT_VERIFIED":
+                    flash("Your email address is not verified yet. Please enter the OTP verification code.", "warning")
+                    return redirect(url_for("verify_email", email=email))
                 flash(error_msg, "danger")
+
         except Exception as e:
             flash(f"Backend server is offline: {e}", "danger")
             
@@ -277,8 +281,10 @@ def register():
         try:
             r = requests.post(f"{BACKEND_API_URL}/auth/register", json=payload)
             if r.status_code == 200:
-                flash("Registration successful! Please log in.", "success")
-                return redirect(url_for("login"))
+                res = r.json()
+                v_code = res.get("verification_code", "")
+                flash("Registration successful! Please enter the 6-digit verification OTP code sent to your email.", "info")
+                return redirect(url_for("verify_email", email=email, code=v_code))
             else:
                 error_msg = r.json().get("detail", "Registration failed")
                 flash(error_msg, "danger")
@@ -286,6 +292,33 @@ def register():
             flash(f"Backend server error: {e}", "danger")
             
     return render_template("register.html", categories=categories)
+
+@app.route("/verify-email", methods=["GET", "POST"])
+def verify_email():
+    email = request.args.get("email") or request.form.get("email", "")
+    code = request.args.get("code") or request.form.get("code", "")
+    
+    if request.method == "POST":
+        email = request.form.get("email")
+        otp_code = request.form.get("code")
+        try:
+            r = requests.post(f"{BACKEND_API_URL}/auth/verify-email", json={"email": email, "code": otp_code})
+            if r.status_code == 200:
+                user_data = r.json()
+                session["auth_token"] = user_data.get("access_token")
+                session["user_role"] = user_data.get("role")
+                session["user_name"] = user_data.get("name")
+                session["user_id"] = user_data.get("id")
+                flash("Email verified successfully! Welcome to Purakam.", "success")
+                return redirect(url_for("dashboard"))
+            else:
+                error_msg = r.json().get("detail", "Invalid verification code")
+                flash(error_msg, "danger")
+        except Exception as e:
+            flash(f"Backend server error: {e}", "danger")
+            
+    return render_template("verify_email.html", email=email, code=code)
+
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")

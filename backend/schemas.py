@@ -51,6 +51,13 @@ class PartnerLocationUpdate(BaseModel):
     latitude: float
     longitude: float
 
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -58,6 +65,8 @@ class UserResponse(BaseModel):
     phone: str
     address: Optional[str] = None
     role: str
+    is_verified: bool = True
+    verification_code: Optional[str] = None
     created_at: datetime
     partner_profile: Optional[PartnerProfileResponse] = None
     access_token: Optional[str] = None
@@ -66,6 +75,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class ServiceCategoryResponse(BaseModel):
     id: int

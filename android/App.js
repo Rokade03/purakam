@@ -22,7 +22,9 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import ProfileDetailsScreen from './src/screens/ProfileDetailsScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import VerifyEmailScreen from './src/screens/VerifyEmailScreen';
 import ServicesScreen from './src/screens/ServicesScreen';
+
 import BookingScreen from './src/screens/BookingScreen';
 import TrackingScreen from './src/screens/TrackingScreen';
 import ChatScreen from './src/screens/ChatScreen';
@@ -126,9 +128,11 @@ function AuthStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
     </Stack.Navigator>
   );
 }
+
 
 function CustomerStack() {
   return (
