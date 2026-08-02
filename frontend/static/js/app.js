@@ -354,12 +354,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     // For COD, just upload attachments and complete
                     await uploadBookingAttachments(booking.id);
-                    showToast("Booking created successfully!", "success");
-                    setTimeout(() => {
-                        window.location.href = "/dashboard";
-                    }, 1000);
+                    showGreenTickModal("Booking Confirmed!", "Your service booking request has been created and broadcast to nearby verified partners.", "/dashboard");
                 }
             } catch (err) {
+
                 showToast(err.message || "Failed to create booking", "danger");
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = `<i data-lucide="check"></i> Confirm & Book Now`;
@@ -397,9 +395,10 @@ async function acceptJob(bookingId) {
         await apiRequest(`/bookings/${bookingId}/status?new_status=accepted`, {
             method: "PUT"
         });
-        showToast("Job accepted successfully!", "success");
-        setTimeout(() => window.location.reload(), 1000);
+        showGreenTickModal("Job Accepted!", `You have accepted booking #${bookingId}. You can now start travel and navigate to the doorstep.`, null);
+        setTimeout(() => window.location.reload(), 2000);
     } catch (err) {
+
         console.error("Job acceptance error:", err);
         // Reload after a short delay so the feed is refreshed and the contested/expired job is removed
         setTimeout(() => window.location.reload(), 2000);
