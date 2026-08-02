@@ -54,19 +54,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def send_email_otp(to_email: str, otp_code: str):
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port_str = os.environ.get("SMTP_PORT", "465")
-    try:
-        smtp_port = int(smtp_port_str)
-    except ValueError:
-        smtp_port = 465
-
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
     smtp_user = os.environ.get("SMTP_USER", "").strip()
     smtp_password = os.environ.get("SMTP_PASSWORD", "").replace(" ", "").strip()
     
     if not smtp_user or not smtp_password:
         print(f"📧 [DEV SANDBOX MODE] No SMTP credentials configured. OTP Code for {to_email} is {otp_code}")
-        return False
+        return False, "No SMTP credentials configured"
         
     try:
         msg = MIMEMultipart("alternative")
@@ -90,33 +84,30 @@ def send_email_otp(to_email: str, otp_code: str):
         """
         msg.attach(MIMEText(html_content, "html"))
         
-        # Try SSL port 465 first, fallback to TLS port 587
-        if smtp_port == 465:
+        # 1. Try SSL port 465 first (most reliable on Render / cloud)
+        try:
+            with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, to_email, msg.as_string())
+            print(f"✅ Real email successfully sent to {to_email} via SSL 465")
+            return True, "Success via SSL 465"
+        except Exception as ssl_err:
+            print(f"SSL 465 failed: {ssl_err}. Trying TLS 587...")
             try:
-                with smtplib.SMTP_SSL(smtp_server, 465, timeout=12) as server:
-                    server.login(smtp_user, smtp_password)
-                    server.sendmail(smtp_user, to_email, msg.as_string())
-                print(f"✅ Real email successfully sent to {to_email} via SSL 465")
-                return True
-            except Exception as ssl_err:
-                print(f"SSL 465 failed ({ssl_err}), trying TLS 587...")
-                with smtplib.SMTP(smtp_server, 587, timeout=12) as server:
+                with smtplib.SMTP(smtp_server, 587, timeout=10) as server:
                     server.starttls()
                     server.login(smtp_user, smtp_password)
                     server.sendmail(smtp_user, to_email, msg.as_string())
                 print(f"✅ Real email successfully sent to {to_email} via TLS 587")
-                return True
-        else:
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=12) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_user, to_email, msg.as_string())
-            print(f"✅ Real email successfully sent to {to_email} via port {smtp_port}")
-            return True
+                return True, "Success via TLS 587"
+            except Exception as tls_err:
+                err_msg = f"SSL 465 error: [{ssl_err}] | TLS 587 error: [{tls_err}]"
+                print(f"❌ Failed to send email to {to_email}: {err_msg}")
+                return False, err_msg
 
     except Exception as e:
         print(f"❌ Failed to send real email to {to_email}: {e}")
-        return False
+        return False, str(e)
 
 app = FastAPI(title="Purakam API Backend", version="1.0.0")
 
@@ -125,7 +116,6 @@ def test_smtp():
     smtp_user = os.environ.get("SMTP_USER", "").strip()
     smtp_password = os.environ.get("SMTP_PASSWORD", "").strip()
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = os.environ.get("SMTP_PORT", "465")
 
     if not smtp_user or not smtp_password:
         return {
@@ -135,16 +125,15 @@ def test_smtp():
             "smtp_password_configured": bool(smtp_password)
         }
 
-    # Attempt test email sending to admin / test address
     test_code = "999999"
-    success = send_email_otp(smtp_user, test_code)
+    success, detail = send_email_otp(smtp_user, test_code)
     return {
         "status": "SUCCESS" if success else "FAILED",
         "smtp_server": smtp_server,
-        "smtp_port": smtp_port,
         "smtp_user": smtp_user,
-        "message": "Test email sent successfully to " + smtp_user if success else "Failed to send email. Check Render server logs for exact error details."
+        "detail": detail
     }
+
 
 
 
@@ -319,7 +308,7 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
         db.add(new_partner)
         db.refresh(new_user)
 
-    sent = send_email_otp(new_user.email, otp_code)
+    sent, _ = send_email_otp(new_user.email, otp_code)
     token = create_access_token(new_user.id, new_user.role)
 
     new_user.access_token = token
@@ -385,11 +374,12 @@ def resend_verification(req: schemas.ResendVerificationRequest, db: Session = De
     user.verification_code_expires_at = expires_at
     db.commit()
 
-    sent = send_email_otp(user.email, otp_code)
+    sent, _ = send_email_otp(user.email, otp_code)
     res = {"message": "New verification code sent to your email"}
     if not sent:
         res["verification_code"] = otp_code
     return res
+
 
 
 @app.post("/api/auth/login", response_model=schemas.UserResponse)
