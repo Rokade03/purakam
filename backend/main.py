@@ -267,14 +267,15 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
             pan_card=pan_upper
         )
         db.add(new_partner)
-        db.commit()
         db.refresh(new_user)
 
-    send_email_otp(new_user.email, otp_code)
+    sent = send_email_otp(new_user.email, otp_code)
     token = create_access_token(new_user.id, new_user.role)
-    new_user.access_token = token
-    return new_user
 
+    new_user.access_token = token
+    if sent:
+        new_user.verification_code = None
+    return new_user
 
 @app.post("/api/auth/verify-email", response_model=schemas.UserResponse)
 def verify_email(req: schemas.VerifyEmailRequest, db: Session = Depends(get_db)):
@@ -334,8 +335,11 @@ def resend_verification(req: schemas.ResendVerificationRequest, db: Session = De
     user.verification_code_expires_at = expires_at
     db.commit()
 
-    send_email_otp(user.email, otp_code)
-    return {"message": "New verification code sent to your email", "verification_code": otp_code}
+    sent = send_email_otp(user.email, otp_code)
+    res = {"message": "New verification code sent to your email"}
+    if not sent:
+        res["verification_code"] = otp_code
+    return res
 
 
 @app.post("/api/auth/login", response_model=schemas.UserResponse)
