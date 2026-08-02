@@ -54,60 +54,111 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def send_email_otp(to_email: str, otp_code: str):
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
+    resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    sendgrid_api_key = os.environ.get("SENDGRID_API_KEY", "").strip()
     smtp_user = os.environ.get("SMTP_USER", "").strip()
     smtp_password = os.environ.get("SMTP_PASSWORD", "").replace(" ", "").strip()
-    
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com").strip()
+
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #111827; margin: 0; font-size: 24px;">Purakam</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Household Services Platform</p>
+        </div>
+        <h2 style="color: #111827; font-size: 18px;">Verify Your Email Address</h2>
+        <p style="color: #4b5563; line-height: 1.5;">Thank you for registering with Purakam! Please enter the 6-digit OTP verification code below to complete your registration:</p>
+        <div style="font-size: 32px; font-weight: bold; color: #22c55e; letter-spacing: 6px; padding: 16px; background: #f3f4f6; border-radius: 12px; text-align: center; margin: 24px 0;">
+            {otp_code}
+        </div>
+        <p style="color: #6b7280; font-size: 13px; line-height: 1.4;">This code will expire in 15 minutes. If you did not register for Purakam, please ignore this email.</p>
+    </div>
+    """
+
+    # 1. Try Resend API over HTTPS Port 443 (Allowed by Render)
+    if resend_api_key:
+        try:
+            import requests
+            r = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "from": "Purakam <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": f"Your Purakam Verification Code: {otp_code}",
+                    "html": html_content
+                },
+                timeout=10
+            )
+            if r.status_code in [200, 201, 202]:
+                print(f"✅ Real email sent via Resend HTTPS API to {to_email}")
+                return True, "Success via Resend HTTPS API"
+            else:
+                err = f"Resend API HTTP {r.status_code}: {r.text}"
+                print(err)
+        except Exception as ex:
+            print(f"Resend HTTPS API failed: {ex}")
+
+    # 2. Try SendGrid API over HTTPS Port 443 (Allowed by Render)
+    if sendgrid_api_key:
+        try:
+            import requests
+            r = requests.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                headers={
+                    "Authorization": f"Bearer {sendgrid_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "personalizations": [{"to": [{"email": to_email}]}],
+                    "from": {"email": smtp_user or "no-reply@purakam.in", "name": "Purakam"},
+                    "subject": f"Your Purakam Verification Code: {otp_code}",
+                    "content": [{"type": "text/html", "value": html_content}]
+                },
+                timeout=10
+            )
+            if r.status_code in [200, 201, 202]:
+                print(f"✅ Real email sent via SendGrid HTTPS API to {to_email}")
+                return True, "Success via SendGrid HTTPS API"
+        except Exception as ex:
+            print(f"SendGrid HTTPS API failed: {ex}")
+
+    # 3. Fallback to SMTP (if credentials provided)
     if not smtp_user or not smtp_password:
-        print(f"📧 [DEV SANDBOX MODE] No SMTP credentials configured. OTP Code for {to_email} is {otp_code}")
-        return False, "No SMTP credentials configured"
-        
+        print(f"📧 [DEV SANDBOX MODE] OTP Code for {to_email} is {otp_code}")
+        return False, "No SMTP or API credentials configured"
+
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = f"Your Purakam Verification Code: {otp_code}"
         msg["From"] = f"Purakam Services <{smtp_user}>"
         msg["To"] = to_email
-        
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #ffffff;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="color: #111827; margin: 0; font-size: 24px;">Purakam</h1>
-                <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Household Services Platform</p>
-            </div>
-            <h2 style="color: #111827; font-size: 18px;">Verify Your Email Address</h2>
-            <p style="color: #4b5563; line-height: 1.5;">Thank you for registering with Purakam! Please enter the 6-digit OTP verification code below to complete your registration:</p>
-            <div style="font-size: 32px; font-weight: bold; color: #22c55e; letter-spacing: 6px; padding: 16px; background: #f3f4f6; border-radius: 12px; text-align: center; margin: 24px 0;">
-                {otp_code}
-            </div>
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.4;">This code will expire in 15 minutes. If you did not register for Purakam, please ignore this email.</p>
-        </div>
-        """
         msg.attach(MIMEText(html_content, "html"))
-        
-        # 1. Try SSL port 465 first (most reliable on Render / cloud)
+
         try:
             with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, to_email, msg.as_string())
-            print(f"✅ Real email successfully sent to {to_email} via SSL 465")
+            print(f"✅ Real email sent to {to_email} via SSL 465")
             return True, "Success via SSL 465"
         except Exception as ssl_err:
-            print(f"SSL 465 failed: {ssl_err}. Trying TLS 587...")
             try:
                 with smtplib.SMTP(smtp_server, 587, timeout=10) as server:
                     server.starttls()
                     server.login(smtp_user, smtp_password)
                     server.sendmail(smtp_user, to_email, msg.as_string())
-                print(f"✅ Real email successfully sent to {to_email} via TLS 587")
+                print(f"✅ Real email sent to {to_email} via TLS 587")
                 return True, "Success via TLS 587"
             except Exception as tls_err:
-                err_msg = f"SSL 465 error: [{ssl_err}] | TLS 587 error: [{tls_err}]"
-                print(f"❌ Failed to send email to {to_email}: {err_msg}")
+                err_msg = f"Render network blocked SMTP ports 465/587 ({tls_err}). Use RESEND_API_KEY for HTTPS delivery."
+                print(f"❌ {err_msg}")
                 return False, err_msg
-
     except Exception as e:
-        print(f"❌ Failed to send real email to {to_email}: {e}")
         return False, str(e)
+
 
 app = FastAPI(title="Purakam API Backend", version="1.0.0")
 
