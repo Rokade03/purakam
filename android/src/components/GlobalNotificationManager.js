@@ -205,7 +205,12 @@ export default function GlobalNotificationManager() {
           </View>
         </View>
       </Modal>
+    );
+  };
+
+
   const renderSuccessModal = () => {
+
     if (!successModal) return null;
 
     return (
