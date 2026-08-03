@@ -55,6 +55,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def send_email_otp(to_email: str, otp_code: str):
+    brevo_api_key = os.environ.get("BREVO_API_KEY", "").strip()
     resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
     sendgrid_api_key = os.environ.get("SENDGRID_API_KEY", "").strip()
     smtp_user = os.environ.get("SMTP_USER", "").strip()
@@ -76,7 +77,34 @@ def send_email_otp(to_email: str, otp_code: str):
     </div>
     """
 
-    # 1. Try Resend API over HTTPS Port 443 (Allowed by Render)
+    # 1. Try Brevo HTTPS API (300 free emails/day to ANY email address)
+    if brevo_api_key:
+        try:
+            import requests
+            r = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": brevo_api_key,
+                    "content-type": "application/json",
+                    "accept": "application/json"
+                },
+                json={
+                    "sender": {"name": "Purakam", "email": smtp_user or "aayushrokade03@gmail.com"},
+                    "to": [{"email": to_email}],
+                    "subject": f"Your Purakam Verification Code: {otp_code}",
+                    "htmlContent": html_content
+                },
+                timeout=10
+            )
+            if r.status_code in [200, 201, 202]:
+                print(f"✅ Real email sent via Brevo HTTPS API to {to_email}")
+                return True, "Success via Brevo HTTPS API"
+            else:
+                print(f"Brevo API HTTP {r.status_code}: {r.text}")
+        except Exception as ex:
+            print(f"Brevo HTTPS API failed: {ex}")
+
+    # 2. Try Resend API over HTTPS Port 443
     if resend_api_key:
         try:
             import requests
@@ -102,6 +130,7 @@ def send_email_otp(to_email: str, otp_code: str):
                 print(err)
         except Exception as ex:
             print(f"Resend HTTPS API failed: {ex}")
+
 
     # 2. Try SendGrid API over HTTPS Port 443 (Allowed by Render)
     if sendgrid_api_key:
