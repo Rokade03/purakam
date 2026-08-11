@@ -281,13 +281,21 @@ def register():
         try:
             r = requests.post(f"{BACKEND_API_URL}/auth/register", json=payload)
             if r.status_code == 200:
-                res = r.json()
-                v_code = res.get("verification_code", "")
-                flash("Registration successful! Please enter the 6-digit verification OTP code sent to your email.", "info")
-                return redirect(url_for("verify_email", email=email, code=v_code))
+                user_data = r.json()
+                session["user_id"] = user_data["id"]
+                session["user_name"] = user_data["name"]
+                session["user_email"] = user_data["email"]
+                session["user_role"] = user_data["role"]
+                session["user_address"] = user_data.get("address")
+                session["auth_token"] = user_data.get("access_token")
+                flash("Registration successful! Welcome to Purakam.", "success")
+                if user_data["role"] == "partner":
+                    return redirect(url_for("partner_dashboard"))
+                return redirect(url_for("dashboard"))
             else:
                 error_msg = r.json().get("detail", "Registration failed")
                 flash(error_msg, "danger")
+
         except Exception as e:
             flash(f"Backend server error: {e}", "danger")
             

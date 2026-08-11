@@ -47,9 +47,11 @@
       "favicon": "./assets/logo.png"
     },
     "extra": {
-      "apiUrl": "https://purakam-backend-upr1.onrender.com/api"
+      "apiUrl": "https://purakam-backend-upr1.onrender.com/api",
+      "eas": {
+        "projectId": "d76ca423-62e1-48d1-9faa-cab621cb551a"
+      }
     },
-
     "plugins": [
       "expo-web-browser"
     ]

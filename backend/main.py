@@ -367,7 +367,7 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
     otp_code = str(random.randint(100000, 999999))
     expires_at = datetime.utcnow() + timedelta(minutes=15)
 
-    # Create new User (is_verified = False for new registrations)
+    # Create new User (is_verified = True by default since verification is disabled)
     new_user = User(
         name=user_data.name,
         email=user_data.email,
@@ -375,13 +375,14 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
         phone=user_data.phone,
         address=user_data.address,
         role=user_data.role,
-        is_verified=False,
-        verification_code=otp_code,
-        verification_code_expires_at=expires_at
+        is_verified=True,
+        verification_code=None,
+        verification_code_expires_at=None
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
 
     # If role is partner, create the PartnerProfile
     if user_data.role == "partner":
@@ -432,12 +433,10 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
         db.add(new_partner)
         db.refresh(new_user)
 
-    background_tasks.add_task(send_email_otp, new_user.email, otp_code)
     token = create_access_token(new_user.id, new_user.role)
-
     new_user.access_token = token
-    new_user.verification_code = None
     return new_user
+
 
 
 @app.post("/api/auth/verify-email", response_model=schemas.UserResponse)
@@ -513,15 +512,10 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
             detail="Invalid email or password"
         )
     
-    if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="EMAIL_NOT_VERIFIED"
-        )
-
     token = create_access_token(user.id, user.role)
     user.access_token = token
     return user
+
 
 
 @app.post("/api/auth/google", response_model=schemas.UserResponse)
