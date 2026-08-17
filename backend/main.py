@@ -512,12 +512,24 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
             detail="Invalid email or password"
         )
     
-    # Automatically set partner availability_status to True (Online) on login
+    # Automatically ensure partner profile exists and availability_status is True (Online) on login
     if user.role == "partner":
         partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == user.id).first()
-        if partner_profile and not partner_profile.availability_status:
+        if not partner_profile:
+            partner_profile = PartnerProfile(
+                user_id=user.id,
+                service_category="Electrician",
+                hourly_rate=350.0,
+                availability_status=True,
+                rating=4.9,
+                completed_jobs=0
+            )
+            db.add(partner_profile)
+            db.commit()
+        elif not partner_profile.availability_status:
             partner_profile.availability_status = True
             db.commit()
+
 
     token = create_access_token(user.id, user.role)
     user.access_token = token
@@ -818,17 +830,32 @@ def get_bookings(user_id: int = Depends(get_current_user_id), db: Session = Depe
 @app.get("/api/partner/incoming-bookings", response_model=List[schemas.BookingResponse])
 def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     check_and_expire_bookings(db)
-    partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == user_id).first()
-    if not partner_profile:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or user.role != "partner":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only service partners can view incoming jobs"
         )
-    
+
+    partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == user_id).first()
+    if not partner_profile:
+        partner_profile = PartnerProfile(
+            user_id=user_id,
+            service_category="Electrician",
+            hourly_rate=350.0,
+            availability_status=True,
+            rating=4.9,
+            completed_jobs=0
+        )
+        db.add(partner_profile)
+        db.commit()
+        db.refresh(partner_profile)
+
     # Partner is automatically Online whenever logged in
     if not partner_profile.availability_status:
         partner_profile.availability_status = True
         db.commit()
+
 
         
     partner_user = db.query(User).filter(User.id == user_id).first()
