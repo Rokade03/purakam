@@ -91,8 +91,13 @@ export default function RegisterScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Create your Purakam account</Text>
+        <View style={styles.appLogoWrap}>
+          <MaterialCommunityIcons name="shield-check" size={24} color={colors.primary} />
+          <Text style={styles.appLogoText}>Purakam</Text>
+        </View>
+        <Text style={styles.title}>Create your account</Text>
         <Text style={styles.subtitle}>Sign up to book trusted local home services.</Text>
+
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Full Name</Text>
@@ -252,4 +257,17 @@ const getStyles = (colors) =>
     categoryChipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
     categoryChipTextActive: { color: colors.accentDark },
     hintText: { color: colors.textMuted, fontStyle: 'italic' },
+    appLogoWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 12,
+    },
+    appLogoText: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.primary,
+      letterSpacing: -0.5,
+    },
   });
+

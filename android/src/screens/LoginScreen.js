@@ -143,9 +143,14 @@ export default function LoginScreen({ navigation }) {
           automaticallyAdjustKeyboardInsets
         >
           <View style={styles.headerBlock}>
-            <Text style={styles.title}>Welcome to Purakam</Text>
+            <View style={styles.appLogoWrap}>
+              <MaterialCommunityIcons name="shield-check" size={24} color={colors.primary} />
+              <Text style={styles.appLogoText}>Purakam</Text>
+            </View>
+            <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>Access your household service profile.</Text>
           </View>
+
 
           <View style={styles.form}>
             <View style={styles.fieldLabelRow}>
@@ -327,7 +332,21 @@ const getStyles = (colors, isDark) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 24 },
-    headerBlock: { marginBottom: 16 },
+    headerBlock: {
+      marginBottom: 24,
+    },
+    appLogoWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 12,
+    },
+    appLogoText: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.primary,
+      letterSpacing: -0.5,
+    },
     title: { color: colors.textPrimary, fontSize: 30, fontWeight: '700', marginBottom: 8 },
     subtitle: { color: colors.textSecondary, marginBottom: 24, fontSize: 15, lineHeight: 22 },
     form: { backgroundColor: colors.card, borderRadius: SIZES.radius, padding: SIZES.padding, ...SHADOW },
