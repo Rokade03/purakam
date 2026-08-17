@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
-
-
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 
-export default function BroadcastingTimer({ createdAt, onTimeout, maxSeconds = 180 }) {
+export default function BroadcastingTimer({ createdAt, onTimeout, maxSeconds = 300 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
@@ -18,18 +16,16 @@ export default function BroadcastingTimer({ createdAt, onTimeout, maxSeconds = 1
   useEffect(() => {
     let initialElapsed = 0;
     if (createdAt) {
-      const createdDate = new Date(createdAt);
+      // Append 'Z' if timestamp lacks timezone offset so JavaScript parses it in UTC safely
+      const isoStr = (createdAt.includes('Z') || createdAt.includes('+')) ? createdAt : `${createdAt}Z`;
+      const createdDate = new Date(isoStr);
       if (!isNaN(createdDate.getTime())) {
-        const diffInSec = Math.floor((new Date().getTime() - createdDate.getTime()) / 1000);
-        if (diffInSec > 0) initialElapsed = diffInSec;
+        const diffInSec = Math.floor((Date.now() - createdDate.getTime()) / 1000);
+        // Only use diffInSec if it is realistic (between 0 and 5 minutes)
+        if (diffInSec > 0 && diffInSec < maxSeconds) {
+          initialElapsed = diffInSec;
+        }
       }
-    }
-
-    if (initialElapsed >= maxSeconds) {
-      setElapsedSeconds(maxSeconds);
-      setIsTimedOut(true);
-      if (onTimeout) onTimeout();
-      return;
     }
 
     setElapsedSeconds(initialElapsed);
@@ -100,11 +96,11 @@ export default function BroadcastingTimer({ createdAt, onTimeout, maxSeconds = 1
 
         <View style={styles.textColumn}>
           <Text style={[styles.title, isTimedOut && styles.titleTimedOut]}>
-            {isTimedOut ? "Search Timed Out (3:00)" : "Broadcasting to nearby partners..."}
+            {isTimedOut ? "Search Timed Out (05:00)" : "Broadcasting to nearby partners..."}
           </Text>
           <Text style={styles.subtitle}>
             {isTimedOut
-              ? "Request auto-cancelled after 3 minutes"
+              ? "Request auto-cancelled after 5 minutes"
               : "First available local specialist will accept"}
           </Text>
         </View>
@@ -123,7 +119,6 @@ export default function BroadcastingTimer({ createdAt, onTimeout, maxSeconds = 1
     </View>
   );
 }
-
 
 const getStyles = (colors) =>
   StyleSheet.create({
@@ -215,4 +210,3 @@ const getStyles = (colors) =>
       color: colors.error,
     },
   });
-
