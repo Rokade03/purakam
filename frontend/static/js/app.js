@@ -833,6 +833,26 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }, 6000);
     }
+
+    // Live 1-second broadcasting elapsed timer
+    const elapsedBadges = document.querySelectorAll(".matching-time-elapsed");
+    if (elapsedBadges.length > 0) {
+        setInterval(() => {
+            elapsedBadges.forEach(badge => {
+                const startTimeStr = badge.getAttribute("data-start-time");
+                if (startTimeStr) {
+                    const startTime = new Date(startTimeStr).getTime();
+                    if (!isNaN(startTime)) {
+                        const now = new Date().getTime();
+                        const diffSec = Math.max(0, Math.floor((now - startTime) / 1000));
+                        const mins = Math.floor(diffSec / 60);
+                        const secs = diffSec % 60;
+                        badge.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                    }
+                }
+            });
+        }, 1000);
+    }
 });
 
 // === Real-Time Location Tracking System ===

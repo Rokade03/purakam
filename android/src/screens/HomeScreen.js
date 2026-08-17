@@ -16,6 +16,8 @@ import useBookingStore from '../stores/bookingStore';
 import { getServiceIcon } from '../utils/icons';
 import { useTheme, SIZES, SHADOW } from '../theme';
 import { HomeShimmer } from '../components/Shimmer';
+import BroadcastingTimer from '../components/BroadcastingTimer';
+
 
 const QUICK_SERVICES = [
   { label: 'Electrician', icon: 'flash', query: 'Electrician' },
@@ -157,22 +159,27 @@ export default function HomeScreen({ navigation }) {
               </View>
 
               <View style={styles.activeBookingBody}>
-                <View style={styles.activeBookingPartner}>
-                  <View style={styles.bookingIconCircle}>
-                    <MaterialCommunityIcons
-                      name={getServiceIcon(activeBooking.service_category)}
-                      size={24}
-                      color={colors.accentDark}
-                    />
+                {activeBooking.status === 'requested' ? (
+                  <BroadcastingTimer createdAt={activeBooking.created_at} />
+                ) : (
+                  <View style={styles.activeBookingPartner}>
+                    <View style={styles.bookingIconCircle}>
+                      <MaterialCommunityIcons
+                        name={getServiceIcon(activeBooking.service_category)}
+                        size={24}
+                        color={colors.accentDark}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.bookingCategoryName}>{activeBooking.service_category}</Text>
+                      <Text style={styles.bookingPartnerName}>
+                        {activeBooking.partner?.name || 'Assigning certified partner...'}
+                      </Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.bookingCategoryName}>{activeBooking.service_category}</Text>
-                    <Text style={styles.bookingPartnerName}>
-                      {activeBooking.partner?.name || 'Assigning certified partner...'}
-                    </Text>
-                  </View>
-                </View>
+                )}
               </View>
+
 
               <View style={styles.activeBookingActions}>
                 <TouchableOpacity

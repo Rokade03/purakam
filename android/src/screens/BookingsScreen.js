@@ -20,6 +20,8 @@ import { useTheme, SIZES, SHADOW } from '../theme';
 import { useNotificationStore } from '../stores/notificationStore';
 import { getServiceIcon } from '../utils/icons';
 import { BookingsShimmer } from '../components/Shimmer';
+import BroadcastingTimer from '../components/BroadcastingTimer';
+
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -175,11 +177,9 @@ function ActiveBookingCard({ item, onCancel, navigation, colors }) {
             </View>
           </View>
         ) : (
-          <View style={styles.broadcastingWidget}>
-            <View style={styles.broadcastingPulse} />
-            <Text style={styles.broadcastingText}>Broadcasting request to nearby professionals...</Text>
-          </View>
+          <BroadcastingTimer createdAt={item.created_at} />
         )}
+
 
         {/* Active Verification OTP Section */}
         {item.otp && item.partner?.name && (
