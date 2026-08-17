@@ -608,7 +608,8 @@ def update_partner_location(
     db.commit()
     return {"message": "Location updated successfully"}
 
-DISPATCH_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_TIMEOUT_SECONDS", "600"))
+DISPATCH_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_TIMEOUT_SECONDS", "180"))
+
 
 def check_and_expire_bookings(db: Session):
     now = datetime.utcnow()

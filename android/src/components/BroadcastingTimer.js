@@ -5,17 +5,17 @@ import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 
-export default function BroadcastingTimer({ createdAt }) {
+export default function BroadcastingTimer({ createdAt, onTimeout, maxSeconds = 180 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isTimedOut, setIsTimedOut] = useState(false);
 
   // Animated pulsing scale for radar
   const [pulseAnim] = useState(new Animated.Value(1));
 
   useEffect(() => {
-    // Calculate initial elapsed seconds if createdAt timestamp exists
     let initialElapsed = 0;
     if (createdAt) {
       const createdDate = new Date(createdAt);
@@ -24,11 +24,28 @@ export default function BroadcastingTimer({ createdAt }) {
         if (diffInSec > 0) initialElapsed = diffInSec;
       }
     }
+
+    if (initialElapsed >= maxSeconds) {
+      setElapsedSeconds(maxSeconds);
+      setIsTimedOut(true);
+      if (onTimeout) onTimeout();
+      return;
+    }
+
     setElapsedSeconds(initialElapsed);
 
     // 1-second tick timer
     const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
+      setElapsedSeconds((prev) => {
+        const next = prev + 1;
+        if (next >= maxSeconds) {
+          clearInterval(interval);
+          setIsTimedOut(true);
+          if (onTimeout) onTimeout();
+          return maxSeconds;
+        }
+        return next;
+      });
     }, 1000);
 
     // Continuous radar pulse animation loop
@@ -52,7 +69,7 @@ export default function BroadcastingTimer({ createdAt }) {
       clearInterval(interval);
       pulseAnimation.stop();
     };
-  }, [createdAt]);
+  }, [createdAt, maxSeconds]);
 
   const formatTimer = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -61,33 +78,52 @@ export default function BroadcastingTimer({ createdAt }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isTimedOut && styles.containerTimedOut]}>
       <View style={styles.leftRow}>
         <View style={styles.pulseContainer}>
-          <Animated.View
-            style={[
-              styles.pulseRing,
-              { transform: [{ scale: pulseAnim }] },
-            ]}
-          />
-          <View style={styles.pulseCenter}>
-            <MaterialCommunityIcons name="radar" size={14} color="#F59E0B" />
+          {!isTimedOut && (
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                { transform: [{ scale: pulseAnim }] },
+              ]}
+            />
+          )}
+          <View style={[styles.pulseCenter, isTimedOut && styles.pulseCenterTimedOut]}>
+            <MaterialCommunityIcons
+              name={isTimedOut ? "clock-alert-outline" : "radar"}
+              size={14}
+              color={isTimedOut ? colors.error : "#F59E0B"}
+            />
           </View>
         </View>
 
         <View style={styles.textColumn}>
-          <Text style={styles.title}>Broadcasting to nearby partners...</Text>
-          <Text style={styles.subtitle}>First available local specialist will accept</Text>
+          <Text style={[styles.title, isTimedOut && styles.titleTimedOut]}>
+            {isTimedOut ? "Search Timed Out (3:00)" : "Broadcasting to nearby partners..."}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isTimedOut
+              ? "Request auto-cancelled after 3 minutes"
+              : "First available local specialist will accept"}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.timerBadge}>
-        <MaterialCommunityIcons name="clock-outline" size={13} color={colors.textSecondary} />
-        <Text style={styles.timerText}>{formatTimer(elapsedSeconds)}</Text>
+      <View style={[styles.timerBadge, isTimedOut && styles.timerBadgeTimedOut]}>
+        <MaterialCommunityIcons
+          name="clock-outline"
+          size={13}
+          color={isTimedOut ? colors.error : colors.textSecondary}
+        />
+        <Text style={[styles.timerText, isTimedOut && styles.timerTextTimedOut]}>
+          {formatTimer(elapsedSeconds)}
+        </Text>
       </View>
     </View>
   );
 }
+
 
 const getStyles = (colors) =>
   StyleSheet.create({
@@ -161,4 +197,22 @@ const getStyles = (colors) =>
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       color: colors.textPrimary,
     },
+    containerTimedOut: {
+      borderColor: 'rgba(239, 68, 68, 0.3)',
+      backgroundColor: 'rgba(239, 68, 68, 0.04)',
+    },
+    pulseCenterTimedOut: {
+      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    },
+    titleTimedOut: {
+      color: colors.error,
+    },
+    timerBadgeTimedOut: {
+      borderColor: 'rgba(239, 68, 68, 0.3)',
+      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    },
+    timerTextTimedOut: {
+      color: colors.error,
+    },
   });
+

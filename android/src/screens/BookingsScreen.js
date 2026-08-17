@@ -177,8 +177,9 @@ function ActiveBookingCard({ item, onCancel, navigation, colors }) {
             </View>
           </View>
         ) : (
-          <BroadcastingTimer createdAt={item.created_at} />
+          <BroadcastingTimer createdAt={item.created_at} onTimeout={() => onCancel(item.id)} />
         )}
+
 
 
         {/* Active Verification OTP Section */}

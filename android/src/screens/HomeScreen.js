@@ -160,8 +160,12 @@ export default function HomeScreen({ navigation }) {
 
               <View style={styles.activeBookingBody}>
                 {activeBooking.status === 'requested' ? (
-                  <BroadcastingTimer createdAt={activeBooking.created_at} />
+                  <BroadcastingTimer
+                    createdAt={activeBooking.created_at}
+                    onTimeout={() => useBookingStore.getState().cancelBooking(activeBooking.id)}
+                  />
                 ) : (
+
                   <View style={styles.activeBookingPartner}>
                     <View style={styles.bookingIconCircle}>
                       <MaterialCommunityIcons
