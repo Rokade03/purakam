@@ -132,16 +132,12 @@ export default function PartnerDashboardScreen() {
             <Text style={styles.header}>Partner Dashboard</Text>
             <Text style={styles.subheader}>{profile?.service_category || 'Service Provider'}</Text>
           </View>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>{available ? 'Online' : 'Offline'}</Text>
-            <Switch
-              value={available}
-              onValueChange={handleAvailabilityToggle}
-              disabled={isUpdatingAvailability}
-              thumbColor={available ? colors.accent : colors.border}
-            />
+          <View style={styles.onlineBadge}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.onlineBadgeText}>Online & Ready</Text>
           </View>
         </View>
+
 
         {error ? (
           <View style={styles.errorBox}>
@@ -374,4 +370,27 @@ const getStyles = (colors, isDark) =>
     },
     errorText: { color: colors.error, flex: 1 },
     retryText: { color: colors.accentDark, fontWeight: '700' },
+    onlineBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(34, 197, 94, 0.12)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(34, 197, 94, 0.3)',
+    },
+    pulseDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#22C55E',
+    },
+    onlineBadgeText: {
+      color: '#22C55E',
+      fontWeight: '800',
+      fontSize: 12,
+    },
   });
+

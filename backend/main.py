@@ -512,9 +512,17 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
             detail="Invalid email or password"
         )
     
+    # Automatically set partner availability_status to True (Online) on login
+    if user.role == "partner":
+        partner_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == user.id).first()
+        if partner_profile and not partner_profile.availability_status:
+            partner_profile.availability_status = True
+            db.commit()
+
     token = create_access_token(user.id, user.role)
     user.access_token = token
     return user
+
 
 
 
@@ -817,9 +825,11 @@ def get_incoming_bookings_for_partner(user_id: int = Depends(get_current_user_id
             detail="Only service partners can view incoming jobs"
         )
     
-    # Check provider availability (online/offline)
+    # Partner is automatically Online whenever logged in
     if not partner_profile.availability_status:
-        return []
+        partner_profile.availability_status = True
+        db.commit()
+
         
     partner_user = db.query(User).filter(User.id == user_id).first()
     

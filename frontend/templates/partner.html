@@ -8,20 +8,13 @@
             <p style="color: var(--text-secondary);">Manage availability, accept incoming service requests, and track payouts</p>
         </div>
         
-        <!-- Online/Offline Switch Toggle Widget -->
-        <div class="online-toggle-wrapper" style="margin-bottom: 0;">
-            <div style="margin-right: 1.5rem; text-align: right;">
-                <span style="font-size: 0.8rem; color: var(--text-muted); display: block; text-transform: uppercase; font-weight: 700;">Status</span>
-                <strong id="partner-status-text" style="font-size: 1.1rem; color: var(--text-primary);">
-                    {{ "Online" if session.get('user_id') and session.get('user_role') == 'partner' and partner_online_status else "Offline" }}
-                </strong>
-            </div>
-            <label class="switch">
-                <input type="checkbox" id="partner-online-toggle" {% if partner_online_status %}checked{% endif %}>
-                <span class="slider"></span>
-            </label>
+        <!-- Online Badge Widget -->
+        <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); padding: 0.5rem 1rem; border-radius: 20px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></div>
+            <strong style="color: #22c55e; font-size: 0.9rem;">Online & Active</strong>
         </div>
     </div>
+
 
     <!-- Quick Stats Cards Row -->
     <div class="dashboard-grid">

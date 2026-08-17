@@ -158,11 +158,10 @@ export default function PartnerProfileScreen() {
               <Text style={styles.value}>{partnerProfile?.completed_jobs ?? 0}</Text>
             </View>
             <View style={styles.detailCard}>
-              <Text style={styles.label}>Availability</Text>
-              <Text style={styles.value}>
-                {partnerProfile?.availability_status ? 'Online' : 'Offline'}
-              </Text>
+              <Text style={styles.label}>Availability Status</Text>
+              <Text style={[styles.value, { color: '#22C55E' }]}>🟢 Online & Active</Text>
             </View>
+
             {partnerProfile?.bio ? (
               <View style={styles.detailCard}>
                 <Text style={styles.label}>Bio</Text>
