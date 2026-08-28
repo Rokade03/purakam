@@ -39,6 +39,7 @@ export default function RegisterScreen({ navigation }) {
   const [role, setRole] = useState('customer');
   const [serviceCategory, setServiceCategory] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
+  const [experienceYears, setExperienceYears] = useState('2');
   const [aadhar, setAadhar] = useState('');
   const [pan, setPan] = useState('');
 
@@ -61,12 +62,20 @@ export default function RegisterScreen({ navigation }) {
     const payload = { name, email, password, phone, address, role };
 
     if (role === 'partner') {
-      if (!serviceCategory || !hourlyRate || !aadhar || !pan) {
-        showToast('warning', 'Missing Info', 'Please complete all partner fields.');
+      if (!serviceCategory || !hourlyRate || !experienceYears || !aadhar || !pan) {
+        showToast('warning', 'Missing Info', 'Please complete all required partner fields.');
         return;
       }
+
+      const exp = parseInt(experienceYears, 10);
+      if (isNaN(exp) || exp < 2) {
+        showToast('warning', 'Experience Required', 'Service partners must have a minimum of 2 years of professional experience.');
+        return;
+      }
+
       payload.service_category = serviceCategory;
       payload.hourly_rate = parseFloat(hourlyRate);
+      payload.experience_years = exp;
       payload.aadhar_card = aadhar;
       payload.pan_card = pan.toUpperCase();
     }
@@ -76,8 +85,6 @@ export default function RegisterScreen({ navigation }) {
       await signIn(data);
       showToast('success', 'Account Created', 'Welcome to Purakam!');
     } catch (error) {
-
-
       showToast('error', 'Registration Error', getErrorMessage(error, 'Registration failed'));
     }
   };
@@ -100,21 +107,27 @@ export default function RegisterScreen({ navigation }) {
 
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Full Name</Text>
+          <Text style={styles.label}>
+            Full Name<Text style={styles.requiredStar}> *</Text>
+          </Text>
           <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={colors.textMuted} />
         </View>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>
+            Email<Text style={styles.requiredStar}> *</Text>
+          </Text>
           <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="hello@purakam.in" keyboardType="email-address" autoCapitalize="none" placeholderTextColor={colors.textMuted} />
         </View>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>
+            Password<Text style={styles.requiredStar}> *</Text>
+          </Text>
           <View style={styles.passwordContainer}>
             <TextInput
               style={[styles.input, styles.passwordInput]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Password"
+              placeholder="Password (min 6 chars)"
               secureTextEntry={!showPassword}
               placeholderTextColor={colors.textMuted}
             />
@@ -124,12 +137,16 @@ export default function RegisterScreen({ navigation }) {
           </View>
         </View>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Phone</Text>
+          <Text style={styles.label}>
+            Phone<Text style={styles.requiredStar}> *</Text>
+          </Text>
           <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+91 9999 0000 99" keyboardType="phone-pad" placeholderTextColor={colors.textMuted} />
         </View>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Address (Mumbai / Thane / Navi Mumbai)</Text>
-          <TextInput style={[styles.input, { height: 100 }]} value={address} onChangeText={setAddress} placeholder="Full doorstep address" multiline placeholderTextColor={colors.textMuted} />
+          <Text style={styles.label}>
+            Address (Mumbai / Thane / Navi Mumbai)<Text style={styles.requiredStar}> *</Text>
+          </Text>
+          <TextInput style={[styles.input, { height: 80 }]} value={address} onChangeText={setAddress} placeholder="Full doorstep address" multiline placeholderTextColor={colors.textMuted} />
         </View>
 
         <View style={styles.switchRow}>
@@ -144,7 +161,9 @@ export default function RegisterScreen({ navigation }) {
         {role === 'partner' && (
           <View style={styles.partnerSection}>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Service Category</Text>
+              <Text style={styles.label}>
+                Service Category<Text style={styles.requiredStar}> *</Text>
+              </Text>
               {servicesLoading ? (
                 <ActivityIndicator color={colors.accent} />
               ) : services.length === 0 ? (
@@ -166,19 +185,32 @@ export default function RegisterScreen({ navigation }) {
               )}
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Hourly Rate (INR)</Text>
+              <Text style={styles.label}>
+                Hourly Rate (INR)<Text style={styles.requiredStar}> *</Text>
+              </Text>
               <TextInput style={styles.input} value={hourlyRate} onChangeText={setHourlyRate} keyboardType="numeric" placeholder="499" placeholderTextColor={colors.textMuted} />
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Aadhar Card (12 digits)</Text>
+              <Text style={styles.label}>
+                Professional Experience (Min 2 Years)<Text style={styles.requiredStar}> *</Text>
+              </Text>
+              <TextInput style={styles.input} value={experienceYears} onChangeText={setExperienceYears} keyboardType="numeric" placeholder="2" placeholderTextColor={colors.textMuted} />
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>
+                Aadhar Card (12 digits)<Text style={styles.requiredStar}> *</Text>
+              </Text>
               <TextInput style={styles.input} value={aadhar} onChangeText={setAadhar} placeholder="123456789012" keyboardType="numeric" maxLength={12} placeholderTextColor={colors.textMuted} />
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>PAN Card</Text>
+              <Text style={styles.label}>
+                PAN Card<Text style={styles.requiredStar}> *</Text>
+              </Text>
               <TextInput style={styles.input} value={pan} onChangeText={setPan} placeholder="ABCDE1234F" autoCapitalize="characters" maxLength={10} placeholderTextColor={colors.textMuted} />
             </View>
           </View>
         )}
+
 
         <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={isLoading}>
           <Text style={styles.buttonText}>{isLoading ? 'Creating account...' : 'Create Account'}</Text>
@@ -202,7 +234,15 @@ const getStyles = (colors) =>
     title: { fontSize: 30, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
     subtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 24 },
     formGroup: { marginBottom: 16 },
-    label: { fontSize: 14, color: colors.textSecondary, marginBottom: 8, fontWeight: '600' },
+    label: {
+      color: colors.textSecondary,
+      marginBottom: 8,
+      fontWeight: '600',
+    },
+    requiredStar: {
+      color: colors.error,
+      fontWeight: '700',
+    },
     input: {
       backgroundColor: colors.surface,
       borderRadius: SIZES.radius,

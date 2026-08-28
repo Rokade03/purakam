@@ -11,28 +11,28 @@
         <form action="{{ url_for('register') }}" method="POST">
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="name">Full Name</label>
+                    <label for="name">Full Name <span style="color: #ef4444;">*</span></label>
                     <input type="text" id="name" name="name" class="form-input" placeholder="Rajesh Kumar" required>
                 </div>
                 <div class="form-group">
-                    <label for="phone">Phone Number (+91)</label>
+                    <label for="phone">Phone Number (+91) <span style="color: #ef4444;">*</span></label>
                     <input type="text" id="phone" name="phone" class="form-input" placeholder="9876543210" required>
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="email">Email Address</label>
+                <label for="email">Email Address <span style="color: #ef4444;">*</span></label>
                 <input type="email" id="email" name="email" class="form-input" placeholder="name@email.com" required>
             </div>
             
             <div class="form-group">
-                <label for="password">Password (min 6 chars)</label>
-                <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required>
+                <label for="password">Password (min 6 chars) <span style="color: #ef4444;">*</span></label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required minlength="6">
             </div>
 
             <div class="form-group">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <label for="address" style="margin-bottom: 0;">Full Address / Location (Mumbai Only)</label>
+                    <label for="address" style="margin-bottom: 0;">Full Address / Location (Mumbai Only) <span style="color: #ef4444;">*</span></label>
                     <button type="button" id="btn-get-location" class="chat-launcher-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: var(--border-radius-sm); font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="fetchCurrentLocationAddress(this)">
                         <i data-lucide="map-pin" style="width: 12px; height: 12px;"></i> Use Current Location
                     </button>
@@ -42,7 +42,7 @@
 
             <!-- Role Selection -->
             <div class="form-group">
-                <label style="margin-bottom: 0.6rem; display: block;">I am joining as a:</label>
+                <label style="margin-bottom: 0.6rem; display: block;">I am joining as a: <span style="color: #ef4444;">*</span></label>
                 <div style="display: flex; gap: 1.5rem;">
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                         <input type="radio" name="role" value="customer" checked onclick="togglePartnerFields(false)" style="accent-color: var(--primary); width: 16px; height: 16px;">
@@ -61,7 +61,7 @@
                 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="service_category">Service Specialty</label>
+                        <label for="service_category">Service Specialty <span style="color: #ef4444;">*</span></label>
                         <select id="service_category" name="service_category" class="filter-select">
                             {% for cat in categories %}
                                 <option value="{{ cat.name }}">{{ cat.name }}</option>
@@ -69,9 +69,15 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="hourly_rate">Hourly Charge Rate (₹)</label>
+                        <label for="hourly_rate">Hourly Charge Rate (₹) <span style="color: #ef4444;">*</span></label>
                         <input type="number" id="hourly_rate" name="hourly_rate" class="form-input" placeholder="250" value="250" min="100" max="2000">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="experience_years">Professional Experience (Min 2 Years) <span style="color: #ef4444;">*</span></label>
+                    <input type="number" id="experience_years" name="experience_years" class="form-input" placeholder="2" value="2" min="2" max="50">
+                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Purakam service partners are required to have at least 2 years of field experience.</small>
                 </div>
 
                 <div class="form-group">
@@ -81,11 +87,11 @@
 
                 <div class="form-grid" style="margin-top: 1rem;">
                     <div class="form-group">
-                        <label for="aadhar_card">Aadhar Card Number (12 Digits)</label>
+                        <label for="aadhar_card">Aadhar Card Number (12 Digits) <span style="color: #ef4444;">*</span></label>
                         <input type="text" id="aadhar_card" name="aadhar_card" class="form-input" placeholder="123456789012" maxlength="12" pattern="\d{12}" title="Aadhar card must be a 12-digit numeric code">
                     </div>
                     <div class="form-group">
-                        <label for="pan_card">PAN Card Number (10 Characters)</label>
+                        <label for="pan_card">PAN Card Number (10 Characters) <span style="color: #ef4444;">*</span></label>
                         <input type="text" id="pan_card" name="pan_card" class="form-input" placeholder="ABCDE1234F" maxlength="10" style="text-transform: uppercase;" pattern="[A-Z0-9]{10}" title="PAN card must be a 10-character alphanumeric code">
                     </div>
                 </div>
@@ -107,6 +113,7 @@
         const fields = document.getElementById("partner-specific-fields");
         const categoryField = document.getElementById("service_category");
         const rateField = document.getElementById("hourly_rate");
+        const expField = document.getElementById("experience_years");
         const aadharField = document.getElementById("aadhar_card");
         const panField = document.getElementById("pan_card");
 
@@ -114,15 +121,18 @@
             fields.style.display = "block";
             categoryField.setAttribute("required", "required");
             rateField.setAttribute("required", "required");
+            expField.setAttribute("required", "required");
             aadharField.setAttribute("required", "required");
             panField.setAttribute("required", "required");
         } else {
             fields.style.display = "none";
             categoryField.removeAttribute("required");
             rateField.removeAttribute("required");
+            expField.removeAttribute("required");
             aadharField.removeAttribute("required");
             panField.removeAttribute("required");
         }
     }
 </script>
+
 {% endblock %}

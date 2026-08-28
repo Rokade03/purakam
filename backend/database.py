@@ -58,8 +58,10 @@ class PartnerProfile(Base):
     availability_status = Column(Boolean, default=False)  # True = Active/Online, False = Offline
     bio = Column(Text, nullable=True)
     completed_jobs = Column(Integer, default=0)
+    experience_years = Column(Integer, default=2)
     aadhar_card = Column(String, nullable=True)
     pan_card = Column(String, nullable=True)
+
 
     # Relationship
     user = relationship("User", back_populates="partner_profile")
@@ -154,7 +156,9 @@ def init_db():
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR;"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code_expires_at TIMESTAMP;"))
+            conn.execute(text("ALTER TABLE partner_profiles ADD COLUMN IF NOT EXISTS experience_years INTEGER DEFAULT 2;"))
             conn.commit()
+
     except Exception as e:
         print(f"Auto-migration note: {e}")
 

@@ -22,6 +22,7 @@ class UserCreate(BaseModel):
     # Partner specific fields if role == "partner"
     service_category: Optional[str] = None
     hourly_rate: Optional[float] = None
+    experience_years: Optional[int] = None
     bio: Optional[str] = None
     aadhar_card: Optional[str] = None
     pan_card: Optional[str] = None
@@ -29,6 +30,7 @@ class UserCreate(BaseModel):
 class PartnerProfileUpdate(BaseModel):
     service_category: Optional[str] = None
     hourly_rate: Optional[float] = None
+    experience_years: Optional[int] = None
     availability_status: Optional[bool] = None
     bio: Optional[str] = None
 
@@ -41,8 +43,10 @@ class PartnerProfileResponse(BaseModel):
     availability_status: bool
     bio: Optional[str] = None
     completed_jobs: int
+    experience_years: Optional[int] = 2
     aadhar_card: Optional[str] = None
     pan_card: Optional[str] = None
+
 
     class Config:
         from_attributes = True

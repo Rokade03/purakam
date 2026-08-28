@@ -394,6 +394,14 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Service category and hourly rate required for partner role"
             )
+
+        if user_data.experience_years is None or user_data.experience_years < 2:
+            db.delete(new_user)
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Service partners must have a minimum of 2 years of professional experience."
+            )
             
         if not user_data.aadhar_card or not user_data.pan_card:
             db.delete(new_user)
@@ -425,13 +433,15 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
             user_id=new_user.id,
             service_category=user_data.service_category,
             hourly_rate=user_data.hourly_rate,
-            bio=user_data.bio or f"Professional {user_data.service_category} in the local area.",
-            availability_status=False,  # Starts offline
+            experience_years=user_data.experience_years,
+            bio=user_data.bio or f"Professional {user_data.service_category} with {user_data.experience_years} years of experience.",
+            availability_status=True,  # Automatically Online
             aadhar_card=aadhar_stripped,
             pan_card=pan_upper
         )
         db.add(new_partner)
         db.refresh(new_user)
+
 
     token = create_access_token(new_user.id, new_user.role)
     new_user.access_token = token
