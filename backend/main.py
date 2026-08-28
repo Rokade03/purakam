@@ -1374,3 +1374,97 @@ def delete_service_category(
     db.commit()
     return {"message": "Service category deleted successfully"}
 
+@app.post("/api/admin/clean-db")
+def clean_database(db: Session = Depends(get_db)):
+    db.query(ChatMessage).delete()
+    db.query(Review).delete()
+    db.query(PartnerDeclinedBooking).delete()
+    db.query(Booking).delete()
+    db.commit()
+
+    TEST_EMAILS = {"user@purakam.in", "partner@purakam.in", "acservice@purakam.in"}
+    non_test_users = db.query(User).filter(User.email.notin_(TEST_EMAILS)).all()
+    for u in non_test_users:
+        if u.partner_profile:
+            db.delete(u.partner_profile)
+        db.delete(u)
+    db.commit()
+
+    cust = db.query(User).filter(User.email == "user@purakam.in").first()
+    if not cust:
+        cust = User(
+            name="Rahul Sharma",
+            email="user@purakam.in",
+            password_hash=hash_password("password123"),
+            phone="9876543210",
+            role="customer",
+            address="Bandra West, Mumbai",
+            is_verified=True
+        )
+        db.add(cust)
+        db.commit()
+
+    part1 = db.query(User).filter(User.email == "partner@purakam.in").first()
+    if not part1:
+        part1 = User(
+            name="Rajesh Kumar (Electrician)",
+            email="partner@purakam.in",
+            password_hash=hash_password("password123"),
+            phone="9876543211",
+            role="partner",
+            address="Khar West, Mumbai",
+            is_verified=True
+        )
+        db.add(part1)
+        db.commit()
+
+    p1_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == part1.id).first()
+    if not p1_profile:
+        p1_profile = PartnerProfile(
+            user_id=part1.id,
+            service_category="Electrician",
+            hourly_rate=350.0,
+            experience_years=3,
+            availability_status=True,
+            rating=4.9,
+            completed_jobs=0,
+            aadhar_card="123456789012",
+            pan_card="ABCDE1234F"
+        )
+        db.add(p1_profile)
+        db.commit()
+
+    part2 = db.query(User).filter(User.email == "acservice@purakam.in").first()
+    if not part2:
+        part2 = User(
+            name="Amit Verma (AC Repair)",
+            email="acservice@purakam.in",
+            password_hash=hash_password("password123"),
+            phone="9876543212",
+            role="partner",
+            address="Andheri West, Mumbai",
+            is_verified=True
+        )
+        db.add(part2)
+        db.commit()
+
+    p2_profile = db.query(PartnerProfile).filter(PartnerProfile.user_id == part2.id).first()
+    if not p2_profile:
+        p2_profile = PartnerProfile(
+            user_id=part2.id,
+            service_category="AC Repair",
+            hourly_rate=450.0,
+            experience_years=4,
+            availability_status=True,
+            rating=4.8,
+            completed_jobs=0,
+            aadhar_card="987654321098",
+            pan_card="XYZDE9876F"
+        )
+        db.add(p2_profile)
+        db.commit()
+
+    remaining_users = db.query(User).count()
+    return {"message": f"Database cleaned successfully! Remaining test users: {remaining_users}"}
+
+

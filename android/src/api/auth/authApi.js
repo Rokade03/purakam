@@ -14,3 +14,7 @@ export const verifyEmail = (email, code) =>
 export const resendVerification = (email) =>
   apiClient.post('/auth/resend-verification', { email }).then((r) => r.data);
 
+export const googleLogin = (email, name) =>
+  apiClient.post('/auth/google', { email, name }).then((r) => r.data);
+
+

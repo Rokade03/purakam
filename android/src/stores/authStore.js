@@ -124,6 +124,22 @@ const useAuthStore = create((set, get) => {
         set({ isLoading: false });
       }
     },
+
+    googleLogin: async (email, name) => {
+      set({ isLoading: true, error: null });
+      try {
+        const data = await authApi.googleLogin(email, name);
+        await get().signIn(data);
+        return data;
+      } catch (error) {
+        const message = getErrorMessage(error, 'Google Login failed');
+        set({ error: message });
+        throw error;
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+
   };
 });
 
