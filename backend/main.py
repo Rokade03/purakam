@@ -233,6 +233,64 @@ def send_booking_confirmation_email(customer_email: str, customer_name: str, ser
 
 app = FastAPI(title="Purakam API Backend", version="1.0.0")
 
+# Socket.IO Async Server Setup for Instant OTP & Real-Time Job Sync
+import socketio
+import asyncio
+
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins="*",
+    logger=False,
+    engineio_logger=False
+)
+sio_app = socketio.ASGIApp(sio, socketio_path="")
+app.mount("/ws", sio_app)
+
+@sio.event
+async def connect(sid, environ, auth=None):
+    token = None
+    if auth and isinstance(auth, dict):
+        token = auth.get("token")
+    if not token and "QUERY_STRING" in environ:
+        from urllib.parse import parse_qs
+        qs = parse_qs(environ.get("QUERY_STRING", ""))
+        if "token" in qs:
+            token = qs["token"][0]
+            
+    if token:
+        payload = verify_token(token)
+        if payload:
+            user_id = payload.get("user_id")
+            role = payload.get("role")
+            if user_id:
+                await sio.save_session(sid, {"user_id": user_id, "role": role})
+                await sio.enter_room(sid, f"user_{user_id}")
+                if role == "partner":
+                    await sio.enter_room(sid, "partners")
+
+@sio.event
+async def join_booking_room(sid, data):
+    if isinstance(data, dict):
+        booking_id = data.get("booking_id")
+        if booking_id:
+            await sio.enter_room(sid, f"booking_{booking_id}")
+
+@sio.event
+async def disconnect(sid):
+    pass
+
+def emit_realtime_event(event_name: str, payload: dict, room: str = None):
+    """Safely emit socket events from sync route handlers to connected Web & Mobile apps."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(
+                sio.emit(event_name, payload, room=room), loop
+            )
+    except Exception as e:
+        print(f"Socket emit note: {e}")
+
+
 
 @app.get("/api/auth/test-smtp")
 def test_smtp():
@@ -736,7 +794,24 @@ def create_booking(
             otp_code
         )
 
+    # Emit real-time WebSocket events for instant job broadcast to partners
+    b_dict = {
+        "id": new_booking.id,
+        "service_category": new_booking.service_category,
+        "booking_date": new_booking.booking_date,
+        "time_slot": new_booking.time_slot,
+        "details": new_booking.details,
+        "price": new_booking.price,
+        "status": new_booking.status,
+        "address": new_booking.address,
+        "created_at": new_booking.created_at.isoformat() if new_booking.created_at else None,
+        "area_name": new_booking.area_name
+    }
+    emit_realtime_event("new_booking_broadcast", b_dict, room="partners")
+    emit_realtime_event("booking_created", b_dict, room=f"user_{customer_id}")
+
     return new_booking
+
 
 
 @app.post("/api/bookings/{booking_id}/order")
@@ -980,10 +1055,23 @@ def update_booking_status(
     db.commit()
     db.refresh(booking)
     
+    # Emit real-time WebSocket event to customer and partner rooms for zero latency
+    socket_payload = {
+        "booking_id": booking.id,
+        "status": booking.status,
+        "partner_id": booking.partner_id,
+        "otp": booking.otp
+    }
+    emit_realtime_event("booking_updated", socket_payload, room=f"user_{booking.customer_id}")
+    emit_realtime_event("otp_received", {"booking_id": booking.id, "otp": booking.otp}, room=f"user_{booking.customer_id}")
+    if booking.partner_id:
+        emit_realtime_event("booking_updated", socket_payload, room=f"user_{booking.partner_id}")
+
     pydantic_booking = schemas.BookingResponse.model_validate(booking)
     if user.role == "partner":
         pydantic_booking.otp = None
     return pydantic_booking
+
 
 # === Review Routes ===
 

@@ -5,7 +5,61 @@
 // Host of our FastAPI backend
 const API_URL = window.BACKEND_API_URL || "http://127.0.0.1:8000/api";
 
+// Real-Time Socket.IO Client Controller for Instant OTP & Job Updates
+let socket = null;
+
+function initRealtimeSocket() {
+    if (typeof io === 'undefined') return;
+    const wsHost = API_URL.replace('/api', '');
+    
+    try {
+        socket = io(wsHost, {
+            path: '/ws/socket.io',
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            console.log('⚡ Connected to Purakam Real-Time Socket Server (Zero Latency)');
+        });
+
+        socket.on('otp_received', (data) => {
+            console.log('⚡ Instant OTP Received via Socket:', data);
+            if (data && data.otp) {
+                showToast(`⚡ Doorstep Verification OTP: ${data.otp}`, 'success');
+                const otpDisplay = document.querySelector(`.booking-otp-value[data-booking-id="${data.booking_id}"]`);
+                if (otpDisplay) {
+                    otpDisplay.textContent = data.otp;
+                } else {
+                    setTimeout(() => window.location.reload(), 1200);
+                }
+            }
+        });
+
+        socket.on('job_accepted', (data) => {
+            showToast('🎉 Service partner accepted your request!', 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        });
+
+        socket.on('new_booking_broadcast', (data) => {
+            showToast(`🔔 New service request: ${data.service_category}`, 'info');
+            setTimeout(() => window.location.reload(), 1500);
+        });
+
+        socket.on('booking_updated', (data) => {
+            setTimeout(() => window.location.reload(), 1200);
+        });
+
+    } catch (err) {
+        console.warn('Socket connection note:', err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initRealtimeSocket();
+});
+
 // 1. Toast Notification Helper
+
 function showToast(message, type = "info") {
     const wrapper = document.getElementById("toast-wrapper");
     if (!wrapper) return;
