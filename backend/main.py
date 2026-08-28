@@ -367,6 +367,43 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
     otp_code = str(random.randint(100000, 999999))
     expires_at = datetime.utcnow() + timedelta(minutes=15)
 
+    # Pre-validate partner specific fields before user creation
+    aadhar_stripped = None
+    pan_upper = None
+
+    if user_data.role == "partner":
+        if not user_data.service_category or user_data.hourly_rate is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Service category and hourly rate required for partner role"
+            )
+
+        if user_data.experience_years is None or user_data.experience_years < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Service partners must have a minimum of 2 years of professional experience."
+            )
+            
+        if not user_data.aadhar_card or not user_data.pan_card:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Aadhar card number and PAN card number are required for service partners"
+            )
+            
+        aadhar_stripped = user_data.aadhar_card.replace(" ", "").replace("-", "")
+        if len(aadhar_stripped) != 12 or not aadhar_stripped.isdigit():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Aadhar card must be a 12-digit numeric code"
+            )
+            
+        pan_upper = user_data.pan_card.upper().strip()
+        if len(pan_upper) != 10 or not pan_upper.isalnum():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PAN card must be a 10-character alphanumeric code"
+            )
+
     # Create new User (is_verified = True by default since verification is disabled)
     new_user = User(
         name=user_data.name,
@@ -383,52 +420,8 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
     db.commit()
     db.refresh(new_user)
 
-
     # If role is partner, create the PartnerProfile
     if user_data.role == "partner":
-        if not user_data.service_category or user_data.hourly_rate is None:
-            # Delete user to rollback manually
-            db.delete(new_user)
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Service category and hourly rate required for partner role"
-            )
-
-        if user_data.experience_years is None or user_data.experience_years < 2:
-            db.delete(new_user)
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Service partners must have a minimum of 2 years of professional experience."
-            )
-            
-        if not user_data.aadhar_card or not user_data.pan_card:
-            db.delete(new_user)
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Aadhar card number and PAN card number are required for service partners"
-            )
-            
-        aadhar_stripped = user_data.aadhar_card.replace(" ", "").replace("-", "")
-        if len(aadhar_stripped) != 12 or not aadhar_stripped.isdigit():
-            db.delete(new_user)
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Aadhar card must be a 12-digit numeric code"
-            )
-            
-        pan_upper = user_data.pan_card.upper().strip()
-        if len(pan_upper) != 10 or not pan_upper.isalnum():
-            db.delete(new_user)
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="PAN card must be a 10-character alphanumeric code"
-            )
-        
         new_partner = PartnerProfile(
             user_id=new_user.id,
             service_category=user_data.service_category,
@@ -440,7 +433,9 @@ def register(user_data: schemas.UserCreate, background_tasks: BackgroundTasks, d
             pan_card=pan_upper
         )
         db.add(new_partner)
+        db.commit()
         db.refresh(new_user)
+
 
 
     token = create_access_token(new_user.id, new_user.role)
