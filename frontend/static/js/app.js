@@ -888,26 +888,50 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 6000);
     }
 
-    // Live 1-second broadcasting elapsed timer
+    // Live 1-second broadcasting elapsed timer with 5-minute (300s) auto-cancel limit
     const elapsedBadges = document.querySelectorAll(".matching-time-elapsed");
     if (elapsedBadges.length > 0) {
         setInterval(() => {
             elapsedBadges.forEach(badge => {
                 const startTimeStr = badge.getAttribute("data-start-time");
                 if (startTimeStr) {
-                    const startTime = new Date(startTimeStr).getTime();
+                    const isoStr = (startTimeStr.includes('Z') || startTimeStr.includes('+')) ? startTimeStr : `${startTimeStr}Z`;
+                    const startTime = new Date(isoStr).getTime();
                     if (!isNaN(startTime)) {
                         const now = new Date().getTime();
-                        const diffSec = Math.max(0, Math.floor((now - startTime) / 1000));
-                        const mins = Math.floor(diffSec / 60);
-                        const secs = diffSec % 60;
-                        badge.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                        let diffSec = Math.floor((now - startTime) / 1000);
+                        if (diffSec < 0) diffSec = 0;
+
+                        if (diffSec >= 300) {
+                            badge.textContent = "05:00";
+                            const container = badge.closest(".broadcasting-radar-container");
+                            if (container && !container.classList.contains("timed-out")) {
+                                container.classList.add("timed-out");
+                                container.style.borderColor = "rgba(239, 68, 68, 0.3)";
+                                container.style.background = "rgba(239, 68, 68, 0.04)";
+                                const statusText = container.querySelector(".broadcasting-status-text");
+                                if (statusText) {
+                                    statusText.textContent = "Search Timed Out (05:00) - Request auto-cancelled";
+                                    statusText.style.color = "#ef4444";
+                                }
+                                const card = container.closest(".booking-item-card");
+                                const bookingIdAttr = card ? card.getAttribute("data-booking-id") : null;
+                                if (bookingIdAttr && window.cancelBooking) {
+                                    window.cancelBooking(bookingIdAttr);
+                                }
+                            }
+                        } else {
+                            const mins = Math.floor(diffSec / 60);
+                            const secs = diffSec % 60;
+                            badge.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                        }
                     }
                 }
             });
         }, 1000);
     }
 });
+
 
 // === Real-Time Location Tracking System ===
 let trackingMap = null;
