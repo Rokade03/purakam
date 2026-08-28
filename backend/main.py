@@ -243,8 +243,9 @@ sio = socketio.AsyncServer(
     logger=False,
     engineio_logger=False
 )
-sio_app = socketio.ASGIApp(sio, socketio_path="")
+sio_app = socketio.ASGIApp(sio, socketio_path="socket.io")
 app.mount("/ws", sio_app)
+
 
 @sio.event
 async def connect(sid, environ, auth=None):
