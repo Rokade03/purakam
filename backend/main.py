@@ -529,6 +529,8 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
         elif not partner_profile.availability_status:
             partner_profile.availability_status = True
             db.commit()
+        db.refresh(user)
+
 
 
     token = create_access_token(user.id, user.role)
