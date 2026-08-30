@@ -677,7 +677,29 @@ def update_partner_profile(
     db.refresh(profile)
     return profile
 
+@app.put("/api/users/me", response_model=schemas.UserResponse)
+def update_current_user_profile(
+    user_update: schemas.UserUpdate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if user_update.name is not None and user_update.name.strip():
+        user.name = user_update.name.strip()
+    if user_update.phone is not None and user_update.phone.strip():
+        user.phone = user_update.phone.strip()
+    if user_update.address is not None and user_update.address.strip():
+        user.address = user_update.address.strip()
+        
+    db.commit()
+    db.refresh(user)
+    return user
+
 @app.put("/api/partner/location")
+
 def update_partner_location(
     loc_data: schemas.PartnerLocationUpdate,
     user_id: int = Depends(get_current_user_id),
@@ -720,16 +742,12 @@ def create_booking(
     db: Session = Depends(get_db)
 ):
     ALLOWED_MUMBAI_AREAS = {
-        "Colaba & South Mumbai",
-        "Dadar & Central Mumbai",
-        "Bandra & Western Suburbs",
-        "Andheri & Western Suburbs",
-        "Borivali & Northern Suburbs",
-        "Ghatkopar & Eastern Suburbs",
-        "Powai & East Mumbai",
-        "Thane",
-        "Navi Mumbai"
+        "Mumbai",
+        "Mumbai Suburban",
+        "Navi Mumbai",
+        "Thane"
     }
+
     
     if not booking_data.area_name or booking_data.area_name not in ALLOWED_MUMBAI_AREAS:
         raise HTTPException(

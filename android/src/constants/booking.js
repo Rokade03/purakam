@@ -7,11 +7,12 @@ export const TIME_SLOTS = [
 ];
 
 export const AREA_OPTIONS = [
+  'Mumbai',
   'Mumbai Suburban',
-  'Thane',
   'Navi Mumbai',
-  'Mumbai Urban',
+  'Thane',
 ];
+
 
 export const PLATFORM_FEE = 49;
 export const GST_RATE = 0.18;

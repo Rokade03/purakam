@@ -83,7 +83,7 @@ export default function RegisterScreen({ navigation }) {
     try {
       const data = await register(payload);
       await signIn(data);
-      showToast('success', 'Account Created', 'Welcome to Purakam!');
+      showToast('success', 'Account Created', 'Welcome to purakam!');
     } catch (error) {
       showToast('error', 'Registration Error', getErrorMessage(error, 'Registration failed'));
     }
@@ -100,7 +100,7 @@ export default function RegisterScreen({ navigation }) {
       >
         <View style={styles.appLogoWrap}>
           <MaterialCommunityIcons name="shield-check" size={24} color={colors.primary} />
-          <Text style={styles.appLogoText}>Purakam</Text>
+          <Text style={styles.appLogoText}>purakam</Text>
         </View>
         <Text style={styles.title}>Create your account</Text>
         <Text style={styles.subtitle}>Sign up to book trusted local home services.</Text>

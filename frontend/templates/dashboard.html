@@ -50,10 +50,59 @@
 </style>
 
 <div class="fade-in">
-    <div style="margin-bottom: 2rem;">
-        <h2>Welcome, {{ session.get('user_name') }}</h2>
-        <p style="color: var(--text-secondary);">Manage your bookings and rate service quality</p>
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2>Welcome, {{ session.get('user_name') }}</h2>
+            <p style="color: var(--text-secondary);">Manage your bookings, track live arrival, and update account details</p>
+        </div>
+        <button onclick="toggleProfileUpdateModal()" class="btn-secondary" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.6rem 1.2rem;">
+            <i data-lucide="user-check"></i> Update Profile Details
+        </button>
     </div>
+
+    <!-- Profile Update Modal -->
+    <div id="profile-update-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-glass); border-radius: var(--border-radius-md); width: 100%; max-width: 500px; padding: 2rem; box-shadow: var(--shadow-glass);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; font-family: var(--font-heading); display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="user-cog" style="color: var(--primary);"></i> Update Profile Details
+                </h3>
+                <button type="button" onclick="toggleProfileUpdateModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.4rem;">&times;</button>
+            </div>
+            
+            <form action="{{ url_for('update_profile') }}" method="POST">
+                <div style="margin-bottom: 1.2rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem;">Full Name <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="name" value="{{ session.get('user_name', '') }}" required class="form-input" style="width: 100%;">
+                </div>
+                
+                <div style="margin-bottom: 1.2rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem;">Phone Number <span style="color: var(--danger);">*</span></label>
+                    <input type="tel" name="phone" placeholder="Enter 10-digit phone number" class="form-input" style="width: 100%;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem;">Doorstep Address <span style="color: var(--danger);">*</span></label>
+                    <textarea name="address" rows="3" required class="form-input" style="width: 100%; min-height: 80px;">{{ session.get('user_address', '') }}</textarea>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" onclick="toggleProfileUpdateModal()" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleProfileUpdateModal() {
+            const modal = document.getElementById('profile-update-modal');
+            if (modal) {
+                modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            }
+        }
+    </script>
+
 
     <!-- Quick Stats Row -->
     <div class="dashboard-grid">

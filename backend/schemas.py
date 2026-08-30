@@ -27,7 +27,13 @@ class UserCreate(BaseModel):
     aadhar_card: Optional[str] = None
     pan_card: Optional[str] = None
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=50)
+    phone: Optional[str] = Field(None, min_length=10, max_length=15)
+    address: Optional[str] = None
+
 class PartnerProfileUpdate(BaseModel):
+
     service_category: Optional[str] = None
     hourly_rate: Optional[float] = None
     experience_years: Optional[int] = None

@@ -345,7 +345,8 @@ export default function HomeScreen({ navigation }) {
           </ScrollView>
 
           {/* Trust Section */}
-          <Text style={styles.sectionHeaderTitle}>Why trust Purakam?</Text>
+          <Text style={styles.sectionHeaderTitle}>Why trust purakam?</Text>
+
           <View style={styles.trustGrid}>
             {TRUST_ITEMS.map((item, idx) => (
               <View key={idx} style={styles.trustCard}>

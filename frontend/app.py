@@ -159,7 +159,37 @@ def partner_dashboard():
         partner_online_status=partner_online_status
     )
 
+@app.route("/update-profile", methods=["POST"])
+def update_profile():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+        
+    name = request.form.get("name")
+    phone = request.form.get("phone")
+    address = request.form.get("address")
+    
+    payload = {}
+    if name: payload["name"] = name
+    if phone: payload["phone"] = phone
+    if address: payload["address"] = address
+    
+    try:
+        headers = get_auth_headers()
+        r = requests.put(f"{BACKEND_API_URL}/users/me", json=payload, headers=headers)
+        if r.status_code == 200:
+            user_data = r.json()
+            session["user_name"] = user_data["name"]
+            session["user_address"] = user_data.get("address")
+            flash("Profile details updated successfully!", "success")
+        else:
+            flash(r.json().get("detail", "Failed to update profile"), "danger")
+    except Exception as e:
+        flash(f"Error updating profile: {e}", "danger")
+        
+    return redirect(url_for("dashboard"))
+
 @app.route("/admin/dashboard")
+
 def admin_dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))

@@ -140,8 +140,27 @@ const useAuthStore = create((set, get) => {
       }
     },
 
+    updateProfile: async (payload) => {
+      set({ isLoading: true, error: null });
+      try {
+        const data = await authApi.updateProfile(payload);
+        const token = get().token;
+        const user = { ...data };
+        delete user.access_token;
+        set({ user });
+        await persistAuth(user, token);
+        return data;
+      } catch (error) {
+        const message = getErrorMessage(error, 'Profile update failed');
+        set({ error: message });
+        throw error;
+      } finally {
+        set({ isLoading: false });
+      }
+    },
   };
 });
+
 
 
 export default useAuthStore;

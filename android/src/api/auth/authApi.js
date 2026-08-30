@@ -17,4 +17,8 @@ export const resendVerification = (email) =>
 export const googleLogin = (email, name) =>
   apiClient.post('/auth/google', { email, name }).then((r) => r.data);
 
+export const updateProfile = (payload) =>
+  apiClient.put('/users/me', payload).then((r) => r.data);
+
+
 

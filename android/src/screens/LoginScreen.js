@@ -115,7 +115,7 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await login(email, password);
-      showToast('success', 'Logged In', 'Welcome back to Purakam!');
+      showToast('success', 'Logged In', 'Welcome back to purakam!');
     } catch (error) {
       const detail = error?.response?.data?.detail;
       if (detail === 'EMAIL_NOT_VERIFIED') {
@@ -145,7 +145,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.headerBlock}>
             <View style={styles.appLogoWrap}>
               <MaterialCommunityIcons name="shield-check" size={24} color={colors.primary} />
-              <Text style={styles.appLogoText}>Purakam</Text>
+              <Text style={styles.appLogoText}>purakam</Text>
             </View>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>Access your household service profile.</Text>
@@ -258,7 +258,7 @@ export default function LoginScreen({ navigation }) {
                   <MaterialCommunityIcons name="google" size={32} color={colors.primary} />
                 </View>
                 <Text style={styles.chooseAccountTitle}>Choose an account</Text>
-                <Text style={styles.chooseAccountSubtitle}>to continue to Purakam</Text>
+                <Text style={styles.chooseAccountSubtitle}>to continue to purakam</Text>
               </View>
 
               {/* Input fields */}

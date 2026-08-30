@@ -382,11 +382,8 @@ export default function BookingScreen({ route, navigation }) {
         address,
         payment_method: paymentMethod,
         pincode,
-        area_name: areaName === 'Mumbai Suburban'
-          ? 'Bandra & Western Suburbs'
-          : areaName === 'Mumbai Urban'
-          ? 'Colaba & South Mumbai'
-          : areaName,
+        area_name: areaName,
+
         latitude: coords.latitude,
         longitude: coords.longitude,
         partner_id: null,
