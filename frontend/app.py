@@ -291,14 +291,21 @@ def register():
         address = request.form.get("address")
         role = request.form.get("role", "customer")
         
+        terms_agree = request.form.get("terms_agree")
+        if not terms_agree:
+            flash("You must accept the Terms & Conditions to create an account.", "danger")
+            return render_template("register.html", categories=categories)
+            
         payload = {
             "name": name,
             "email": email,
             "password": password,
             "phone": phone,
             "address": address,
-            "role": role
+            "role": role,
+            "terms_agree": True
         }
+
         
         # If partner, add additional profile parameters
         if role == "partner":

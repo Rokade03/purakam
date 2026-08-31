@@ -42,6 +42,7 @@ export default function RegisterScreen({ navigation }) {
   const [experienceYears, setExperienceYears] = useState('2');
   const [aadhar, setAadhar] = useState('');
   const [pan, setPan] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
 
   useEffect(() => {
     fetchServices();
@@ -59,7 +60,12 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
-    const payload = { name, email, password, phone, address, role };
+    if (!agreedTerms) {
+      showToast('warning', 'Terms & Conditions', 'Please read and accept the Terms & Conditions to register.');
+      return;
+    }
+
+    const payload = { name, email, password, phone, address, role, terms_agree: true };
 
     if (role === 'partner') {
       if (!serviceCategory || !hourlyRate || !experienceYears || !aadhar || !pan) {
@@ -88,6 +94,7 @@ export default function RegisterScreen({ navigation }) {
       showToast('error', 'Registration Error', getErrorMessage(error, 'Registration failed'));
     }
   };
+
 
   return (
     <SafeAreaView
@@ -212,9 +219,56 @@ export default function RegisterScreen({ navigation }) {
         )}
 
 
+        {/* Terms & Conditions Agreement Box */}
+        <View style={styles.termsBox}>
+          <Text style={styles.termsTitle}>Partner Registration – Terms & Conditions</Text>
+          <ScrollView style={styles.termsScroll} nestedScrollEnabled={true}>
+            <Text style={styles.termsSectionTitle}>Damage / Loss:</Text>
+            <Text style={styles.termsText}>
+              Any damage to or loss of the company’s, customer’s, or any third party’s property caused by the Partner while performing the assigned work shall be the responsibility of the Partner.
+            </Text>
+
+            <Text style={styles.termsSectionTitle}>Termination / Suspension:</Text>
+            <Text style={styles.termsText}>
+              purakam reserves the right to suspend or terminate the Partner’s registration in case of violation of company policies, misconduct, negligence, poor service, or repeated customer complaints.
+            </Text>
+
+            <Text style={styles.termsSectionTitle}>Complaint Option:</Text>
+            <Text style={styles.termsText}>
+              Customers may submit complaints regarding the Partner’s services. purakam may review and investigate such complaints and take appropriate action as deemed necessary.
+            </Text>
+
+            <Text style={styles.termsSectionTitle}>Incident / Injury During Work:</Text>
+            <Text style={styles.termsText}>
+              If the Partner suffers any injury, accident, or other loss while performing the assigned work, the Partner shall be responsible for their own safety and well-being. purakam shall not be responsible for any such incident, to the extent permitted by applicable law.
+            </Text>
+
+            <Text style={styles.termsSectionTitle}>Declaration:</Text>
+            <Text style={styles.termsText}>
+              I have read, understood, and agreed to all the above Terms & Conditions. I agree to follow purakam’s rules, policies, and service standards while working as a purakam Partner.
+            </Text>
+          </ScrollView>
+
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => setAgreedTerms(!agreedTerms)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name={agreedTerms ? 'checkbox-marked' : 'checkbox-blank-outline'}
+              size={22}
+              color={agreedTerms ? colors.primary : colors.textMuted}
+            />
+            <Text style={styles.checkboxLabel}>
+              I accept the <Text style={{ color: colors.primary, fontWeight: '700' }}>Terms & Conditions</Text> <Text style={styles.requiredStar}>*</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={isLoading}>
           <Text style={styles.buttonText}>{isLoading ? 'Creating account...' : 'Create Account'}</Text>
         </TouchableOpacity>
+
 
         <View style={styles.footerTextRow}>
           <Text style={styles.footerText}>Already have an account?</Text>
@@ -309,5 +363,54 @@ const getStyles = (colors) =>
       color: colors.primary,
       letterSpacing: -0.5,
     },
+    termsBox: {
+      marginTop: 16,
+      marginBottom: 16,
+      padding: 14,
+      backgroundColor: colors.surface,
+      borderRadius: SIZES.radius,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    termsTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      marginBottom: 10,
+    },
+    termsScroll: {
+      maxHeight: 130,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      padding: 10,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    termsSectionTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primary,
+      marginTop: 6,
+      marginBottom: 2,
+    },
+    termsText: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      lineHeight: 16,
+      marginBottom: 6,
+    },
+    checkboxRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 4,
+    },
+    checkboxLabel: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontWeight: '500',
+    },
   });
+
 

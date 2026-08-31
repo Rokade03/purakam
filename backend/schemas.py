@@ -18,6 +18,8 @@ class UserCreate(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     address: Optional[str] = None
     role: str = "customer"  # "customer" or "partner"
+    terms_agree: bool = True
+
     
     # Partner specific fields if role == "partner"
     service_category: Optional[str] = None
