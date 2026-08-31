@@ -101,7 +101,65 @@ function showToast(message, type = "info") {
     }, 4000);
 }
 
+// 2. Green Tick Confirmation Modal Popup Controller
+window.showGreenTickModal = function(title, message, redirectUrl = null) {
+    let modal = document.getElementById("green-tick-modal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "green-tick-modal";
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        `;
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div style="background: var(--bg-surface, #1e1e24); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 16px; max-width: 440px; width: 100%; padding: 2.2rem 1.8rem; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <div style="width: 72px; height: 72px; background: rgba(34, 197, 94, 0.15); border: 2px solid #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.2rem; box-shadow: 0 0 25px rgba(34, 197, 94, 0.3);">
+                <i data-lucide="check-circle-2" style="width: 42px; height: 42px; color: #22c55e;"></i>
+            </div>
+            <h3 style="font-size: 1.4rem; font-weight: 700; color: #ffffff; margin-bottom: 0.6rem; font-family: var(--font-heading, sans-serif);">${title}</h3>
+            <p style="font-size: 0.95rem; color: #a1a1aa; line-height: 1.5; margin-bottom: 1.6rem;">${message}</p>
+            <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.2); padding: 0.8rem 1rem; border-radius: 10px; margin-bottom: 1.6rem; display: flex; align-items: center; gap: 0.6rem; justify-content: center;">
+                <i data-lucide="radar" style="width: 18px; height: 18px; color: #22c55e;"></i>
+                <span style="font-size: 0.85rem; font-weight: 600; color: #22c55e;">Live Radar Broadcasting Active (00:00 - 05:00)</span>
+            </div>
+            <button id="green-tick-modal-btn" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: #ffffff; font-weight: 600; border: none; padding: 0.8rem 2rem; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1rem; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);">
+                ${redirectUrl ? 'Go to My Bookings & Live Radar' : 'OK, Continue'}
+            </button>
+        </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+    modal.style.display = "flex";
+
+    const btn = document.getElementById("green-tick-modal-btn");
+    btn.onclick = () => {
+        modal.style.display = "none";
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+        }
+    };
+
+    if (redirectUrl) {
+        setTimeout(() => {
+            if (modal.style.display !== "none") {
+                window.location.href = redirectUrl;
+            }
+        }, 3500);
+    }
+};
+
 // Helper to make authenticated requests to FastAPI backend
+
 async function apiRequest(endpoint, options = {}) {
     const headers = {
         "Content-Type": "application/json",

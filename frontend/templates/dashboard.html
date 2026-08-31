@@ -164,12 +164,13 @@
                             Booking ID: #SRV{{ booking.id }}
                         </span>
                         <span class="status-badge badge-{{ booking.status }}">
-                            {% if booking.status == 'completed' %}
-                                <i data-lucide="check-circle-2" style="width: 13px; height: 13px; margin-right: 4px; vertical-align: middle; color: #22c55e;"></i>
+                            <i data-lucide="check-circle-2" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; color: #22c55e;"></i>
+                            {% if booking.status == 'requested' %}
+                                Order Confirmed & Broadcasting
+                            {% else %}
+                                {{ booking.status | replace('_', ' ') }}
                             {% endif %}
-                            {{ booking.status | replace('_', ' ') }}
                         </span>
-
                     </div>
                     
                     <!-- Body -->
@@ -225,28 +226,31 @@
                                         </div>
                                     </div>
                                 {% else %}
-                                    <div class="broadcasting-radar-container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: rgba(0, 0, 0, 0.03); padding: 1.2rem 1.5rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-glass); width: 100%; position: relative; overflow: hidden;">
+                                    <div class="broadcasting-radar-container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: rgba(34, 197, 94, 0.06); padding: 1.2rem 1.5rem; border-radius: var(--border-radius-sm); border: 1px solid rgba(34, 197, 94, 0.3); width: 100%; position: relative; overflow: hidden;">
                                         <div style="display: flex; align-items: center; gap: 1.2rem; z-index: 1;">
-                                            <!-- Radar Scanner Animation -->
-                                            <div class="radar-scanner" style="position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.05); border-radius: 50%; border: 1px solid var(--border-glass); flex-shrink: 0;">
-                                                <i data-lucide="radar" style="width: 20px; height: 20px; color: var(--accent); z-index: 2;" class="rotating-radar"></i>
+                                            <!-- Radar Scanner Animation with Green Tick -->
+                                            <div class="radar-scanner" style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(34, 197, 94, 0.15); border-radius: 50%; border: 1px solid rgba(34, 197, 94, 0.4); flex-shrink: 0;">
+                                                <i data-lucide="check-circle-2" style="width: 22px; height: 22px; color: #22c55e; z-index: 2;"></i>
                                                 <div class="radar-ring ring-1"></div>
                                                 <div class="radar-ring ring-2"></div>
                                                 <div class="radar-ring ring-3"></div>
                                             </div>
                                             <div>
-                                                <!-- Dynamic Status Carousel -->
-                                                <span class="broadcasting-status-text" style="font-size: 0.95rem; font-weight: 600; display: block; color: var(--text-primary); transition: opacity 0.3s ease;">Broadcasting request to certified professionals...</span>
-                                                <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">First available partner in this category will accept the job</span>
+                                                <div style="font-size: 0.78rem; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.3rem;">
+                                                    <i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i> Order Confirmed & Active
+                                                </div>
+                                                <span class="broadcasting-status-text" style="font-size: 0.95rem; font-weight: 600; display: block; color: var(--text-primary); margin-top: 0.1rem;">Broadcasting request to certified professionals...</span>
+                                                <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">First available partner in this category will accept your job</span>
                                             </div>
                                         </div>
-                                        <div class="broadcasting-timer-badge" style="z-index: 1; background: var(--bg-surface); padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid var(--border-glass); font-size: 0.8rem; font-weight: 700; font-family: monospace; display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary);">
+                                        <div class="broadcasting-timer-badge" style="z-index: 1; background: var(--bg-surface); padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 0.8rem; font-weight: 700; font-family: monospace; display: flex; align-items: center; gap: 0.4rem; color: #22c55e;">
                                             <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
-                                            <span class="matching-time-elapsed" data-start-time="{{ booking.created_at }}">0:00</span>
+                                            <span class="matching-time-elapsed" data-start-time="{{ booking.created_at }}">00:00</span>
                                         </div>
                                     </div>
                                 {% endif %}
                             </div>
+
                             
                             {% if booking.otp and booking.partner %}
                                 <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(0,0,0,0.03); border: 1px solid var(--border-glass); border-radius: var(--border-radius-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
